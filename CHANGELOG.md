@@ -1,5 +1,10 @@
 # Change Log
 
+## WIP
+### Added
+- llama.cpp vision APIs.
+- Java smoke test for OCR.
+
 ## 0.18.0
 ### Added
 - llama.cpp text-generation and summarization APIs for decoder-only GGUF models

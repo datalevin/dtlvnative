@@ -3814,6 +3814,99 @@ public class DTLV extends datalevin.dtlvnative.DTLVConfig {
     public static native void dtlv_llama_generator_destroy(
             dtlv_llama_generator generator);
 
+    /**
+     * Opaque llama.cpp vision-generation handle.
+     */
+    @Opaque
+    public static class dtlv_llama_vision_generator extends Pointer {
+        public dtlv_llama_vision_generator() {
+            super((Pointer) null);
+        }
+
+        public dtlv_llama_vision_generator(Pointer p) {
+            super(p);
+        }
+    }
+
+    public static native int dtlv_llama_vision_generator_create(
+            @Cast("dtlv_llama_vision_generator**") PointerPointer generator,
+            @Cast("const char*") BytePointer model_path,
+            @Cast("const char*") BytePointer mmproj_path,
+            int n_ctx, int n_batch, int n_threads,
+            int image_min_tokens, int image_max_tokens);
+
+    public static native int dtlv_llama_vision_generator_create(
+            @ByPtrPtr dtlv_llama_vision_generator generator,
+            @Cast("const char*") BytePointer model_path,
+            @Cast("const char*") BytePointer mmproj_path,
+            int n_ctx, int n_batch, int n_threads,
+            int image_min_tokens, int image_max_tokens);
+
+    public static native int dtlv_llama_vision_generator_create(
+            @Cast("dtlv_llama_vision_generator**") PointerPointer generator,
+            String model_path,
+            String mmproj_path,
+            int n_ctx, int n_batch, int n_threads,
+            int image_min_tokens, int image_max_tokens);
+
+    public static native int dtlv_llama_vision_generator_create(
+            @ByPtrPtr dtlv_llama_vision_generator generator,
+            String model_path,
+            String mmproj_path,
+            int n_ctx, int n_batch, int n_threads,
+            int image_min_tokens, int image_max_tokens);
+
+    public static native int dtlv_llama_vision_generator_n_ctx(
+            dtlv_llama_vision_generator generator);
+
+    public static native int dtlv_llama_vision_generate(
+            dtlv_llama_vision_generator generator,
+            @Cast("const char*") BytePointer prompt,
+            @Cast("const char*") BytePointer image_path,
+            int n_predict,
+            @Cast("char*") BytePointer output,
+            @Cast("size_t") long output_len);
+
+    public static native int dtlv_llama_vision_generate(
+            dtlv_llama_vision_generator generator,
+            String prompt,
+            String image_path,
+            int n_predict,
+            @Cast("char*") BytePointer output,
+            @Cast("size_t") long output_len);
+
+    public static native int dtlv_llama_vision_generate(
+            dtlv_llama_vision_generator generator,
+            String prompt,
+            String image_path,
+            int n_predict,
+            @Cast("char*") byte[] output,
+            @Cast("size_t") long output_len);
+
+    public static native int dtlv_llama_ocr(
+            dtlv_llama_vision_generator generator,
+            @Cast("const char*") BytePointer image_path,
+            int n_predict,
+            @Cast("char*") BytePointer output,
+            @Cast("size_t") long output_len);
+
+    public static native int dtlv_llama_ocr(
+            dtlv_llama_vision_generator generator,
+            String image_path,
+            int n_predict,
+            @Cast("char*") BytePointer output,
+            @Cast("size_t") long output_len);
+
+    public static native int dtlv_llama_ocr(
+            dtlv_llama_vision_generator generator,
+            String image_path,
+            int n_predict,
+            @Cast("char*") byte[] output,
+            @Cast("size_t") long output_len);
+
+    public static native void dtlv_llama_vision_generator_destroy(
+            dtlv_llama_vision_generator generator);
+
     // #ifdef __cplusplus
     // #endif
 

@@ -26,7 +26,12 @@ public class Test {
             + "multilingual-e5-small-Q8_0.gguf?download=true";
     private static Path embedModelOverride = null;
     private static Path textModelOverride = null;
+    private static Path visionModelOverride = null;
+    private static Path visionMmprojOverride = null;
+    private static Path ocrImageOverride = null;
+    private static int ocrNPredictOverride = 0;
     private static boolean llamaOnly = false;
+    private static boolean ocrOnly = false;
 
     static void fail(String message) {
         System.err.println(message);
@@ -37,6 +42,15 @@ public class Test {
         System.err.println(message);
         t.printStackTrace(System.err);
         System.exit(-1);
+    }
+
+    static int parseIntOption(String name, String value) {
+        try {
+            return Integer.parseInt(value.trim());
+        } catch (NumberFormatException e) {
+            fail("Invalid integer for " + name + ": " + value, e);
+            return 0;
+        }
     }
 
     static void pass(String message) {
@@ -1420,16 +1434,46 @@ public class Test {
         if (envTextModel != null && !envTextModel.isBlank()) {
             textModelOverride = Paths.get(envTextModel).toAbsolutePath().normalize();
         }
+        String envVisionModel = System.getenv("DTLV_VISION_MODEL_PATH");
+        if (envVisionModel != null && !envVisionModel.isBlank()) {
+            visionModelOverride = Paths.get(envVisionModel).toAbsolutePath().normalize();
+        }
+        String envVisionMmproj = System.getenv("DTLV_VISION_MMPROJ_PATH");
+        if (envVisionMmproj != null && !envVisionMmproj.isBlank()) {
+            visionMmprojOverride = Paths.get(envVisionMmproj).toAbsolutePath().normalize();
+        }
+        String envOcrImage = System.getenv("DTLV_OCR_IMAGE_PATH");
+        if (envOcrImage != null && !envOcrImage.isBlank()) {
+            ocrImageOverride = Paths.get(envOcrImage).toAbsolutePath().normalize();
+        }
+        String envOcrNPredict = System.getenv("DTLV_OCR_N_PREDICT");
+        if (envOcrNPredict != null && !envOcrNPredict.isBlank()) {
+            ocrNPredictOverride = parseIntOption("DTLV_OCR_N_PREDICT", envOcrNPredict);
+        }
 
         for (String arg : args) {
             if ("--llama-only".equals(arg)) {
                 llamaOnly = true;
+            } else if ("--ocr-only".equals(arg)) {
+                ocrOnly = true;
             } else if (arg.startsWith("--embed-model=")) {
                 String path = arg.substring("--embed-model=".length());
                 embedModelOverride = Paths.get(path).toAbsolutePath().normalize();
             } else if (arg.startsWith("--text-model=")) {
                 String path = arg.substring("--text-model=".length());
                 textModelOverride = Paths.get(path).toAbsolutePath().normalize();
+            } else if (arg.startsWith("--vision-model=")) {
+                String path = arg.substring("--vision-model=".length());
+                visionModelOverride = Paths.get(path).toAbsolutePath().normalize();
+            } else if (arg.startsWith("--vision-mmproj=")) {
+                String path = arg.substring("--vision-mmproj=".length());
+                visionMmprojOverride = Paths.get(path).toAbsolutePath().normalize();
+            } else if (arg.startsWith("--ocr-image=")) {
+                String path = arg.substring("--ocr-image=".length());
+                ocrImageOverride = Paths.get(path).toAbsolutePath().normalize();
+            } else if (arg.startsWith("--ocr-n-predict=")) {
+                String value = arg.substring("--ocr-n-predict=".length());
+                ocrNPredictOverride = parseIntOption("--ocr-n-predict", value);
             } else if (!arg.startsWith("--")) {
                 embedModelOverride = Paths.get(arg).toAbsolutePath().normalize();
             }
@@ -1518,6 +1562,79 @@ public class Test {
             pass("Passed llama summarization test.");
         } finally {
             DTLV.dtlv_llama_generator_destroy(generator);
+        }
+    }
+
+    static Path maybeVisionModel() {
+        if (visionModelOverride == null) {
+            return null;
+        }
+
+        expect(Files.isRegularFile(visionModelOverride),
+               "Vision model does not exist: " + visionModelOverride);
+        return visionModelOverride;
+    }
+
+    static Path maybeVisionMmproj() {
+        if (visionMmprojOverride == null) {
+            return null;
+        }
+
+        expect(Files.isRegularFile(visionMmprojOverride),
+               "Vision mmproj does not exist: " + visionMmprojOverride);
+        return visionMmprojOverride;
+    }
+
+    static Path maybeOcrImage() {
+        if (ocrImageOverride == null) {
+            return null;
+        }
+
+        expect(Files.isRegularFile(ocrImageOverride),
+               "OCR image does not exist: " + ocrImageOverride);
+        return ocrImageOverride;
+    }
+
+    static void testLlamaOCR() {
+        System.err.println("Testing llama.cpp OCR ...");
+
+        Path modelPath = maybeVisionModel();
+        Path mmprojPath = maybeVisionMmproj();
+        Path imagePath = maybeOcrImage();
+        if (modelPath == null || mmprojPath == null || imagePath == null) {
+            pass("Skipped llama OCR test. Set DTLV_VISION_MODEL_PATH, DTLV_VISION_MMPROJ_PATH, and DTLV_OCR_IMAGE_PATH.");
+            return;
+        }
+
+        DTLV.dtlv_llama_vision_generator generator = new DTLV.dtlv_llama_vision_generator();
+        int rc = DTLV.dtlv_llama_vision_generator_create(
+                generator,
+                modelPath.toString(),
+                mmprojPath.toString(),
+                0,
+                0,
+                4,
+                0,
+                0);
+        expect(rc == 0, "Failed to create llama vision generator: " + rc);
+
+        byte[] output = new byte[8192];
+        int nPredict = ocrNPredictOverride != 0 ? ocrNPredictOverride : 512;
+        try {
+            System.err.println("Using OCR n_predict=" + nPredict);
+            int len = DTLV.dtlv_llama_ocr(generator, imagePath.toString(), nPredict, output, output.length);
+            expect(len >= 0, "Failed to extract OCR text: " + len);
+
+            String text = new String(output, 0, len, StandardCharsets.UTF_8).trim();
+            expect(!text.isBlank(), "OCR output is blank");
+            if (ocrOnly) {
+                System.out.println("OCR output:");
+                System.out.println(text);
+            }
+
+            pass("Passed llama OCR test.");
+        } finally {
+            DTLV.dtlv_llama_vision_generator_destroy(generator);
         }
     }
 
@@ -1931,6 +2048,11 @@ public class Test {
     public static void main(String[] args) {
         configureEmbeddingArgs(args);
 
+        if (ocrOnly) {
+            runTest("llama OCR", Test::testLlamaOCR);
+            return;
+        }
+
         if (!llamaOnly) {
             runTest("LMDB suite", Test::testLMDB);
             System.out.println("----");
@@ -1939,5 +2061,6 @@ public class Test {
         }
         runTest("llama embedding", Test::testLlamaEmbedding);
         runTest("llama summarization", Test::testLlamaSummarization);
+        runTest("llama OCR", Test::testLlamaOCR);
     }
 }

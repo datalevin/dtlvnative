@@ -32,8 +32,8 @@ Vector support using usearch on Windows is experimental.
 ## llama.cpp text + embedding
 
 `dtlvnative` packages the CPU backend of `llama.cpp` with OpenMP enabled. The
-packaged native API now supports both embedding models and decoder-only text
-models for prompt-based generation, including document summarization.
+packaged native API now supports embedding models, decoder-only text models for
+prompt-based generation, and multimodal OCR with PaddleOCR-VL GGUF models.
 
 ### Embedding API
 
@@ -148,6 +148,49 @@ DTLV.dtlv_llama_generator_destroy(generator);
 If you want to supply your own instruction prompt instead of the built-in
 summary helper, call `dtlv_llama_generate` directly.
 
+### Vision / OCR API
+
+The vision API is aimed at multimodal GGUF models with a matching projector
+GGUF, such as `PaddleOCR-VL-1.5-GGUF`.
+
+| Function | Description |
+|---|---|
+| `dtlv_llama_vision_generator_create` | Load a multimodal text GGUF and matching `mmproj` GGUF |
+| `dtlv_llama_vision_generator_n_ctx` | Return the context size |
+| `dtlv_llama_vision_generate` | Generate text for a single image plus prompt |
+| `dtlv_llama_ocr` | Run OCR with the built-in `OCR:` prompt |
+| `dtlv_llama_vision_generator_destroy` | Free the vision generator |
+
+`dtlv_llama_vision_generator_create` takes `model_path`, `mmproj_path`,
+`n_ctx`, `n_batch`, `n_threads`, `image_min_tokens`, and `image_max_tokens`.
+Pass `0` for the numeric tuning parameters to keep the model defaults. The
+runtime is CPU-only in this package.
+
+`dtlv_llama_vision_generate` and `dtlv_llama_ocr` return the number of UTF-8
+bytes written to the caller-owned output buffer. The image prompt is single
+image only. If the prompt passed to `dtlv_llama_vision_generate` does not
+contain the multimodal marker, the native layer prepends it automatically.
+
+```java
+DTLV.dtlv_llama_vision_generator generator = new DTLV.dtlv_llama_vision_generator();
+int rc = DTLV.dtlv_llama_vision_generator_create(
+        generator,
+        "PaddleOCR-VL-1.5.gguf",
+        "PaddleOCR-VL-1.5-mmproj.gguf",
+        0, 0, 4, 0, 0);
+
+byte[] output = new byte[8192];
+int len = DTLV.dtlv_llama_ocr(
+        generator,
+        "page.png",
+        16,
+        output,
+        output.length);
+
+String text = new String(output, 0, len, StandardCharsets.UTF_8);
+DTLV.dtlv_llama_vision_generator_destroy(generator);
+```
+
 ### Local llama smoke test
 
 To refresh the JavaCPP platform libraries and run the local llama smoke tests
@@ -160,6 +203,29 @@ script/test-llama-summarization --text-model=target/text-models/qwen2.5-0.5b-ins
 The script runs `Test.java` with `--llama-only`, so it covers both the llama
 embedding smoke test and the summarization flow. If you prefer, set
 `DTLV_TEXT_MODEL_PATH=/abs/path/model.gguf` instead of passing `--text-model`.
+
+### OCR smoke test
+
+To refresh the JavaCPP platform libraries and run only the PaddleOCR-VL smoke
+test:
+
+```bash
+script/test-llama-ocr \
+  --vision-model=/path/to/PaddleOCR-VL-1.5.gguf \
+  --vision-mmproj=/path/to/PaddleOCR-VL-1.5-mmproj.gguf \
+  --ocr-image=/path/to/image.png \
+  --ocr-n-predict=16
+```
+
+The OCR script runs `Test.java` with `--ocr-only`, so it skips LMDB, usearch,
+embedding, and summarization. It also prints the extracted OCR text. You can
+set `DTLV_VISION_MODEL_PATH`, `DTLV_VISION_MMPROJ_PATH`, `DTLV_OCR_IMAGE_PATH`,
+and `DTLV_OCR_N_PREDICT` instead of passing the flags explicitly.
+
+For CPU-only smoke tests, keep `--ocr-n-predict` small. `16` is a practical
+default for checking that OCR works end to end. Large document images are much
+slower than small or resized inputs, so for quick validation it helps to reduce
+the longest edge to around 512 pixels first.
 
 ## Additional dependencies
 

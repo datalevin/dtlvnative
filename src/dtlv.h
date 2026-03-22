@@ -563,6 +563,98 @@ extern "C" {
    */
   void dtlv_llama_generator_destroy(dtlv_llama_generator *generator);
 
+  /**
+   * Opaque llama.cpp vision-generation handle.
+   */
+  typedef struct dtlv_llama_vision_generator dtlv_llama_vision_generator;
+
+  /**
+   * Create a CPU-only llama.cpp vision generator backed by a multimodal GGUF
+   * text model and matching mmproj GGUF.
+   *
+   * This API is intended for single-image prompt completion such as OCR and
+   * document parsing with models like PaddleOCR-VL. The prompt may optionally
+   * contain one media marker (`<__media__>`). When omitted, the marker is
+   * automatically prepended before tokenization.
+   *
+   * @param generator The address where the generator will be stored.
+   * @param model_path Path to the multimodal text GGUF model.
+   * @param mmproj_path Path to the matching multimodal projector GGUF.
+   * @param n_ctx Context size. Use 0 to default to the model training context.
+   * @param n_batch Max prompt tokens processed per decode call. Use 0 to mirror
+   *                the context size.
+   * @param n_threads CPU thread count. Use 0 to keep dtlv defaults.
+   * @param image_min_tokens Minimum image tokens for dynamic-resolution models.
+   *                         Use 0 to keep model metadata defaults.
+   * @param image_max_tokens Maximum image tokens for dynamic-resolution models.
+   *                         Use 0 to keep model metadata defaults.
+   * @return MDB_SUCCESS or an error code.
+   */
+  int dtlv_llama_vision_generator_create(dtlv_llama_vision_generator **generator,
+                                         const char *model_path,
+                                         const char *mmproj_path,
+                                         int n_ctx,
+                                         int n_batch,
+                                         int n_threads,
+                                         int image_min_tokens,
+                                         int image_max_tokens);
+
+  /**
+   * Return the context size (max positions) for this vision generator.
+   *
+   * @param generator The generator handle.
+   * @return The context size, or -1 on invalid input.
+   */
+  int dtlv_llama_vision_generator_n_ctx(dtlv_llama_vision_generator *generator);
+
+  /**
+   * Generate text for a single image plus prompt.
+   *
+   * The prompt may contain at most one `<__media__>` marker. If none is
+   * present, the marker is automatically prepended. When n_predict <= 0, a
+   * default budget of 256 generated tokens is used.
+   *
+   * @param generator The generator handle.
+   * @param prompt The UTF-8 prompt text.
+   * @param image_path Path to an image file understood by stb_image.
+   * @param n_predict Maximum number of tokens to generate.
+   * @param output Caller-owned output buffer.
+   * @param output_len Capacity of the output buffer in bytes.
+   * @return Number of bytes written, or a negative errno on error.
+   *         -EMSGSIZE if the prompt/image pair exceeds the context or the
+   *         output buffer is too small.
+   */
+  int dtlv_llama_vision_generate(dtlv_llama_vision_generator *generator,
+                                 const char *prompt,
+                                 const char *image_path,
+                                 int n_predict,
+                                 char *output,
+                                 size_t output_len);
+
+  /**
+   * Convenience helper for OCR-style extraction using the built-in `OCR:`
+   * prompt expected by PaddleOCR-VL.
+   *
+   * @param generator The generator handle.
+   * @param image_path Path to an image file.
+   * @param n_predict Maximum number of tokens to generate.
+   * @param output Caller-owned output buffer.
+   * @param output_len Capacity of the output buffer in bytes.
+   * @return Number of bytes written, or a negative errno on error.
+   */
+  int dtlv_llama_ocr(dtlv_llama_vision_generator *generator,
+                     const char *image_path,
+                     int n_predict,
+                     char *output,
+                     size_t output_len);
+
+  /**
+   * Destroy a llama.cpp vision generator.
+   *
+   * @param generator The generator handle.
+   */
+  void dtlv_llama_vision_generator_destroy(dtlv_llama_vision_generator *generator);
+
 
 #ifdef __cplusplus
 }

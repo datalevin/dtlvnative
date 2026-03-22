@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <errno.h>
+#include <stdio.h>
 #include <string.h>
 #include <stdint.h>
 #include <limits.h>
@@ -11,6 +12,8 @@
 #endif
 #include "dtlv.h"
 #include "llama.h"
+#include "mtmd.h"
+#include "mtmd-helper.h"
 
 
 void val_in(MDB_val *this, MDB_val *other) {
@@ -51,6 +54,7 @@ static BOOL CALLBACK dtlv_llama_backend_init_once(
   (void)parameter;
   (void)context;
   llama_log_set(dtlv_llama_log_callback, NULL);
+  mtmd_helper_log_set(dtlv_llama_log_callback, NULL);
   llama_backend_init();
   return TRUE;
 }
@@ -74,6 +78,7 @@ static void dtlv_llama_log_callback(enum ggml_log_level level,
 
 static void dtlv_llama_backend_init_once(void) {
   llama_log_set(dtlv_llama_log_callback, NULL);
+  mtmd_helper_log_set(dtlv_llama_log_callback, NULL);
   llama_backend_init();
 }
 
@@ -2140,6 +2145,327 @@ int dtlv_llama_summarize(dtlv_llama_generator *generator,
 void dtlv_llama_generator_destroy(dtlv_llama_generator *generator) {
   if (!generator) return;
   if (generator->sampler) llama_sampler_free(generator->sampler);
+  if (generator->ctx) llama_free(generator->ctx);
+  if (generator->model) llama_model_free(generator->model);
+  free(generator);
+}
+
+struct dtlv_llama_vision_generator {
+  struct llama_model *model;
+  struct llama_context *ctx;
+  const struct llama_vocab *vocab;
+  struct llama_sampler *sampler;
+  mtmd_context *mctx;
+  int n_ctx;
+  int n_batch;
+};
+
+static int dtlv_llama_count_substr(const char *text, const char *needle) {
+  int count = 0;
+  size_t needle_len;
+  const char *pos;
+
+  if (!text || !needle || !needle[0]) return 0;
+
+  needle_len = strlen(needle);
+  pos = text;
+  while ((pos = strstr(pos, needle)) != NULL) {
+    count++;
+    pos += needle_len;
+  }
+
+  return count;
+}
+
+static int dtlv_llama_prepare_vision_prompt(const char *prompt,
+                                            char **formatted_prompt_out) {
+  const char *marker;
+  size_t marker_len;
+  size_t prompt_len;
+  size_t total_len;
+  char *formatted;
+  int marker_count;
+
+  if (!prompt || !formatted_prompt_out) return EINVAL;
+  *formatted_prompt_out = NULL;
+
+  marker = mtmd_default_marker();
+  marker_len = strlen(marker);
+  prompt_len = strlen(prompt);
+  marker_count = dtlv_llama_count_substr(prompt, marker);
+
+  if (marker_count > 1) return EINVAL;
+
+  if (marker_count == 1) {
+    formatted = (char *)malloc(prompt_len + 1);
+    if (!formatted) return ENOMEM;
+    memcpy(formatted, prompt, prompt_len + 1);
+    *formatted_prompt_out = formatted;
+    return MDB_SUCCESS;
+  }
+
+  total_len = marker_len + prompt_len;
+  formatted = (char *)malloc(total_len + 1);
+  if (!formatted) return ENOMEM;
+
+  memcpy(formatted, marker, marker_len);
+  if (prompt_len > 0) memcpy(formatted + marker_len, prompt, prompt_len);
+  formatted[total_len] = '\0';
+
+  *formatted_prompt_out = formatted;
+  return MDB_SUCCESS;
+}
+
+int dtlv_llama_vision_generator_create(dtlv_llama_vision_generator **generator,
+                                       const char *model_path,
+                                       const char *mmproj_path,
+                                       int n_ctx,
+                                       int n_batch,
+                                       int n_threads,
+                                       int image_min_tokens,
+                                       int image_max_tokens) {
+  struct dtlv_llama_vision_generator *i;
+  struct llama_model_params model_params;
+  struct llama_context_params ctx_params;
+  struct mtmd_context_params mtmd_params;
+  struct llama_sampler *greedy = NULL;
+  int train_ctx;
+
+  if (!generator || !model_path || !model_path[0] ||
+      !mmproj_path || !mmproj_path[0]) return EINVAL;
+  *generator = NULL;
+
+  dtlv_llama_backend_ensure_init();
+
+  i = calloc(1, sizeof(struct dtlv_llama_vision_generator));
+  if (!i) return ENOMEM;
+
+  model_params = llama_model_default_params();
+  model_params.n_gpu_layers = 0;
+
+  i->model = llama_model_load_from_file(model_path, model_params);
+  if (!i->model) {
+    free(i);
+    return EIO;
+  }
+
+  if (!llama_model_has_decoder(i->model)) {
+    dtlv_llama_vision_generator_destroy(i);
+    return ENOTSUP;
+  }
+
+  i->vocab = llama_model_get_vocab(i->model);
+  if (!i->vocab) {
+    dtlv_llama_vision_generator_destroy(i);
+    return EINVAL;
+  }
+
+  train_ctx = llama_model_n_ctx_train(i->model);
+  i->n_ctx = n_ctx > 0 ? n_ctx : (train_ctx > 0 ? train_ctx : 2048);
+  i->n_batch = n_batch > 0 ? n_batch : i->n_ctx;
+  if (i->n_ctx <= 1 || i->n_batch <= 0) {
+    dtlv_llama_vision_generator_destroy(i);
+    return EINVAL;
+  }
+
+  ctx_params = llama_context_default_params();
+  ctx_params.n_ctx = (uint32_t)i->n_ctx;
+  ctx_params.n_batch = (uint32_t)i->n_batch;
+  ctx_params.n_ubatch = (uint32_t)i->n_batch;
+  ctx_params.embeddings = false;
+  ctx_params.attention_type = LLAMA_ATTENTION_TYPE_CAUSAL;
+  ctx_params.flash_attn_type = LLAMA_FLASH_ATTN_TYPE_DISABLED;
+  ctx_params.offload_kqv = false;
+  ctx_params.op_offload = false;
+  if (n_threads > 0) {
+    ctx_params.n_threads = n_threads;
+    ctx_params.n_threads_batch = n_threads;
+  }
+
+  i->ctx = llama_init_from_model(i->model, ctx_params);
+  if (!i->ctx) {
+    dtlv_llama_vision_generator_destroy(i);
+    return EIO;
+  }
+
+  mtmd_params = mtmd_context_params_default();
+  mtmd_params.use_gpu = false;
+  mtmd_params.print_timings = false;
+  mtmd_params.flash_attn_type = LLAMA_FLASH_ATTN_TYPE_DISABLED;
+  mtmd_params.warmup = false;
+  if (n_threads > 0) mtmd_params.n_threads = n_threads;
+  if (image_min_tokens > 0) mtmd_params.image_min_tokens = image_min_tokens;
+  if (image_max_tokens > 0) mtmd_params.image_max_tokens = image_max_tokens;
+
+  i->mctx = mtmd_init_from_file(mmproj_path, i->model, mtmd_params);
+  if (!i->mctx) {
+    dtlv_llama_vision_generator_destroy(i);
+    return EIO;
+  }
+  if (!mtmd_support_vision(i->mctx)) {
+    dtlv_llama_vision_generator_destroy(i);
+    return ENOTSUP;
+  }
+
+  i->sampler = llama_sampler_chain_init(llama_sampler_chain_default_params());
+  greedy = llama_sampler_init_greedy();
+  if (!i->sampler || !greedy) {
+    if (greedy) llama_sampler_free(greedy);
+    dtlv_llama_vision_generator_destroy(i);
+    return ENOMEM;
+  }
+
+  llama_sampler_chain_add(i->sampler, greedy);
+
+  *generator = i;
+  return MDB_SUCCESS;
+}
+
+int dtlv_llama_vision_generator_n_ctx(dtlv_llama_vision_generator *generator) {
+  if (!generator) return -1;
+  return generator->n_ctx;
+}
+
+int dtlv_llama_vision_generate(dtlv_llama_vision_generator *generator,
+                               const char *prompt,
+                               const char *image_path,
+                               int n_predict,
+                               char *output,
+                               size_t output_len) {
+  const mtmd_bitmap *bitmaps[1];
+  mtmd_bitmap *bitmap = NULL;
+  mtmd_input_chunks *chunks = NULL;
+  char *formatted_prompt = NULL;
+  struct mtmd_input_text text;
+  llama_pos n_prompt;
+  int max_predict;
+  int rc = MDB_SUCCESS;
+  int append_rc = MDB_SUCCESS;
+  size_t used = 0;
+  int i;
+  FILE *image_file;
+
+  if (!generator || !prompt || !image_path || !image_path[0] || !output)
+    return -EINVAL;
+  if (output_len == 0) return -EMSGSIZE;
+
+  output[0] = '\0';
+
+  rc = dtlv_llama_prepare_vision_prompt(prompt, &formatted_prompt);
+  if (rc != MDB_SUCCESS) return -rc;
+
+  image_file = fopen(image_path, "rb");
+  if (!image_file) {
+    free(formatted_prompt);
+    return -errno;
+  }
+  fclose(image_file);
+
+  bitmap = mtmd_helper_bitmap_init_from_file(generator->mctx, image_path);
+  if (!bitmap) {
+    free(formatted_prompt);
+    return -EIO;
+  }
+
+  chunks = mtmd_input_chunks_init();
+  if (!chunks) {
+    mtmd_bitmap_free(bitmap);
+    free(formatted_prompt);
+    return -ENOMEM;
+  }
+
+  bitmaps[0] = bitmap;
+  text.text = formatted_prompt;
+  text.add_special = true;
+  text.parse_special = true;
+
+  rc = mtmd_tokenize(generator->mctx, chunks, &text, bitmaps, 1);
+  if (rc != 0) {
+    mtmd_input_chunks_free(chunks);
+    mtmd_bitmap_free(bitmap);
+    free(formatted_prompt);
+    if (rc == 1) return -EINVAL;
+    if (rc == 2) return -EIO;
+    return -EIO;
+  }
+
+  n_prompt = mtmd_helper_get_n_pos(chunks);
+  if (n_prompt >= (llama_pos)generator->n_ctx) {
+    mtmd_input_chunks_free(chunks);
+    mtmd_bitmap_free(bitmap);
+    free(formatted_prompt);
+    return -EMSGSIZE;
+  }
+
+  max_predict = n_predict > 0 ? n_predict : 256;
+  if ((llama_pos)max_predict > (llama_pos)generator->n_ctx - n_prompt) {
+    max_predict = (int)((llama_pos)generator->n_ctx - n_prompt);
+  }
+  if (max_predict <= 0) {
+    mtmd_input_chunks_free(chunks);
+    mtmd_bitmap_free(bitmap);
+    free(formatted_prompt);
+    return -EMSGSIZE;
+  }
+
+  llama_memory_clear(llama_get_memory(generator->ctx), true);
+  llama_sampler_reset(generator->sampler);
+
+  rc = mtmd_helper_eval_chunks(generator->mctx,
+                               generator->ctx,
+                               chunks,
+                               0,
+                               0,
+                               generator->n_batch,
+                               true,
+                               &n_prompt);
+
+  mtmd_input_chunks_free(chunks);
+  mtmd_bitmap_free(bitmap);
+  free(formatted_prompt);
+
+  if (rc != 0) return -EIO;
+
+  for (i = 0; i < max_predict; i++) {
+    llama_token token = llama_sampler_sample(generator->sampler, generator->ctx, -1);
+
+    if (llama_vocab_is_eog(generator->vocab, token)) break;
+
+    rc = dtlv_llama_append_token_piece(
+        generator->vocab, token, output, output_len, &used);
+    if (rc != MDB_SUCCESS) {
+      append_rc = rc;
+      break;
+    }
+
+    llama_sampler_accept(generator->sampler, token);
+
+    {
+      struct llama_batch batch = llama_batch_get_one(&token, 1);
+      if (llama_decode(generator->ctx, batch) != 0) {
+        return -EIO;
+      }
+    }
+  }
+
+  if (append_rc != MDB_SUCCESS) return -append_rc;
+  if (used > (size_t)INT_MAX) return -EOVERFLOW;
+  return (int)used;
+}
+
+int dtlv_llama_ocr(dtlv_llama_vision_generator *generator,
+                   const char *image_path,
+                   int n_predict,
+                   char *output,
+                   size_t output_len) {
+  return dtlv_llama_vision_generate(
+      generator, "OCR:", image_path, n_predict, output, output_len);
+}
+
+void dtlv_llama_vision_generator_destroy(dtlv_llama_vision_generator *generator) {
+  if (!generator) return;
+  if (generator->sampler) llama_sampler_free(generator->sampler);
+  if (generator->mctx) mtmd_free(generator->mctx);
   if (generator->ctx) llama_free(generator->ctx);
   if (generator->model) llama_model_free(generator->model);
   free(generator);

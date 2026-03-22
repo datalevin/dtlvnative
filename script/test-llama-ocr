@@ -11,20 +11,35 @@ JAVACPP_JAR="${HOME}/.m2/repository/org/bytedeco/javacpp/${JAVACPP_VERSION}/java
 
 usage() {
   cat <<'EOF'
-Usage: script/test-llama-summarization [--text-model=PATH | PATH] [extra Test.java args]
+Usage: script/test-llama-ocr [--vision-model=PATH] [--vision-mmproj=PATH] [--ocr-image=PATH] [--ocr-n-predict=N] [extra Test.java args]
 
 Refresh the JavaCPP platform libraries for the current machine, sync them into
-the platform resource directory, and run the llama smoke tests with
-`--llama-only`.
+the platform resource directory, and run only the PaddleOCR-VL smoke test.
 
-Text model resolution order:
-1. `--text-model=PATH` or positional PATH
-2. `DTLV_TEXT_MODEL_PATH`
-3. A single `target/text-models/*.gguf` candidate
+Required input resolution order:
+1. Explicit flags
+2. Environment variables
+   - DTLV_VISION_MODEL_PATH
+   - DTLV_VISION_MMPROJ_PATH
+   - DTLV_OCR_IMAGE_PATH
+3. Positional arguments in order: MODEL_GGUF MMPROJ_GGUF IMAGE
+
+OCR token budget resolution order:
+1. --ocr-n-predict=N
+2. DTLV_OCR_N_PREDICT
+3. Default: 16
 
 Examples:
-  script/test-llama-summarization --text-model=target/text-models/qwen2.5-0.5b-instruct-q5_k_m.gguf
-  DTLV_TEXT_MODEL_PATH=/abs/path/model.gguf script/test-llama-summarization
+  script/test-llama-ocr \
+    --vision-model=/tmp/PaddleOCR-VL-1.5.gguf \
+    --vision-mmproj=/tmp/PaddleOCR-VL-1.5-mmproj.gguf \
+    --ocr-image=/tmp/paddleocr_vl_demo_512.png
+
+  DTLV_VISION_MODEL_PATH=/tmp/PaddleOCR-VL-1.5.gguf \
+  DTLV_VISION_MMPROJ_PATH=/tmp/PaddleOCR-VL-1.5-mmproj.gguf \
+  DTLV_OCR_IMAGE_PATH=/tmp/paddleocr_vl_demo_512.png \
+  DTLV_OCR_N_PREDICT=16 \
+  script/test-llama-ocr
 EOF
 }
 
@@ -105,22 +120,6 @@ ensure_javacpp_jar() {
   [ -f "$JAVACPP_JAR" ] || die "Missing JavaCPP jar at $JAVACPP_JAR"
 }
 
-pick_default_model() {
-  local dir="$ROOT_DIR/target/text-models"
-  local model
-  local count=0
-
-  [ -d "$dir" ] || return 1
-
-  for model in "$dir"/*.gguf; do
-    [ -f "$model" ] || continue
-    count=$((count + 1))
-    default_model=$model
-  done
-
-  [ "$count" -eq 1 ]
-}
-
 PLATFORM_DIR=$(detect_platform_dir) || die "Unsupported platform: $(uname -s) $(uname -m)"
 PROJECT_DIR="$ROOT_DIR/$PLATFORM_DIR"
 GENERATED_DIR="$ROOT_DIR/src/java/datalevin/dtlvnative/$PLATFORM_DIR"
@@ -128,9 +127,12 @@ RESOURCE_DIR="$PROJECT_DIR/resources/datalevin/dtlvnative/$PLATFORM_DIR"
 
 [ -d "$PROJECT_DIR" ] || die "Missing platform project directory: $PROJECT_DIR"
 
-TEXT_MODEL="${DTLV_TEXT_MODEL_PATH:-}"
+VISION_MODEL="${DTLV_VISION_MODEL_PATH:-}"
+VISION_MMPROJ="${DTLV_VISION_MMPROJ_PATH:-}"
+OCR_IMAGE="${DTLV_OCR_IMAGE_PATH:-}"
+OCR_N_PREDICT="${DTLV_OCR_N_PREDICT:-16}"
 PASS_THROUGH_ARGS=()
-default_model=""
+POSITIONAL_ARGS=()
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
@@ -138,13 +140,17 @@ while [ "$#" -gt 0 ]; do
       usage
       exit 0
       ;;
-    --text-model=*)
-      TEXT_MODEL=${1#*=}
+    --vision-model=*)
+      VISION_MODEL=${1#*=}
       ;;
-    --text-model)
-      shift
-      [ "$#" -gt 0 ] || die "Missing path after --text-model"
-      TEXT_MODEL=$1
+    --vision-mmproj=*)
+      VISION_MMPROJ=${1#*=}
+      ;;
+    --ocr-image=*)
+      OCR_IMAGE=${1#*=}
+      ;;
+    --ocr-n-predict=*)
+      OCR_N_PREDICT=${1#*=}
       ;;
     --)
       shift
@@ -158,26 +164,44 @@ while [ "$#" -gt 0 ]; do
       PASS_THROUGH_ARGS+=("$1")
       ;;
     *)
-      if [ -z "$TEXT_MODEL" ]; then
-        TEXT_MODEL=$1
-      else
-        PASS_THROUGH_ARGS+=("$1")
-      fi
+      POSITIONAL_ARGS+=("$1")
       ;;
   esac
   shift
 done
 
-if [ -z "$TEXT_MODEL" ]; then
-  if pick_default_model; then
-    TEXT_MODEL=$default_model
-  else
-    die "No text model selected. Pass --text-model=... or set DTLV_TEXT_MODEL_PATH."
-  fi
+if [ -z "$VISION_MODEL" ] && [ "${#POSITIONAL_ARGS[@]}" -ge 1 ]; then
+  VISION_MODEL=${POSITIONAL_ARGS[0]}
+fi
+if [ -z "$VISION_MMPROJ" ] && [ "${#POSITIONAL_ARGS[@]}" -ge 2 ]; then
+  VISION_MMPROJ=${POSITIONAL_ARGS[1]}
+fi
+if [ -z "$OCR_IMAGE" ] && [ "${#POSITIONAL_ARGS[@]}" -ge 3 ]; then
+  OCR_IMAGE=${POSITIONAL_ARGS[2]}
+fi
+if [ "${#POSITIONAL_ARGS[@]}" -gt 3 ]; then
+  for extra_arg in "${POSITIONAL_ARGS[@]:3}"; do
+    PASS_THROUGH_ARGS+=("$extra_arg")
+  done
 fi
 
-TEXT_MODEL=$(resolve_path "$TEXT_MODEL")
-[ -f "$TEXT_MODEL" ] || die "Text model does not exist: $TEXT_MODEL"
+[ -n "$VISION_MODEL" ] || die "Missing vision model. Pass --vision-model=... or set DTLV_VISION_MODEL_PATH."
+[ -n "$VISION_MMPROJ" ] || die "Missing vision mmproj. Pass --vision-mmproj=... or set DTLV_VISION_MMPROJ_PATH."
+[ -n "$OCR_IMAGE" ] || die "Missing OCR image. Pass --ocr-image=... or set DTLV_OCR_IMAGE_PATH."
+
+VISION_MODEL=$(resolve_path "$VISION_MODEL")
+VISION_MMPROJ=$(resolve_path "$VISION_MMPROJ")
+OCR_IMAGE=$(resolve_path "$OCR_IMAGE")
+
+[ -f "$VISION_MODEL" ] || die "Vision model does not exist: $VISION_MODEL"
+[ -f "$VISION_MMPROJ" ] || die "Vision mmproj does not exist: $VISION_MMPROJ"
+[ -f "$OCR_IMAGE" ] || die "OCR image does not exist: $OCR_IMAGE"
+
+case "$OCR_N_PREDICT" in
+  ''|*[!0-9-]*)
+    die "OCR token budget must be an integer: $OCR_N_PREDICT"
+    ;;
+esac
 
 if [ ! -f "$ROOT_DIR/src/libdtlv.dylib" ] && [ ! -f "$ROOT_DIR/src/libdtlv.so" ]; then
   die "Missing native dtlv library under src/. Build the native libs before running this test."
@@ -194,14 +218,26 @@ ensure_javacpp_jar "$PLATFORM_DIR"
 stage_native_runtime_libs "$GENERATED_DIR"
 sync_platform_libs "$GENERATED_DIR" "$RESOURCE_DIR"
 
-echo "Running llama smoke tests on $PLATFORM_DIR"
-echo "Using text model: $TEXT_MODEL"
+echo "Running llama OCR smoke test on $PLATFORM_DIR"
+echo "Using vision model: $VISION_MODEL"
+echo "Using vision mmproj: $VISION_MMPROJ"
+echo "Using OCR image: $OCR_IMAGE"
+echo "Using OCR n_predict: $OCR_N_PREDICT"
 
 (
   cd "$PROJECT_DIR"
   if [ "${#PASS_THROUGH_ARGS[@]}" -gt 0 ]; then
-    lein run --llama-only "--text-model=$TEXT_MODEL" "${PASS_THROUGH_ARGS[@]}"
+    lein run --ocr-only \
+      "--vision-model=$VISION_MODEL" \
+      "--vision-mmproj=$VISION_MMPROJ" \
+      "--ocr-image=$OCR_IMAGE" \
+      "--ocr-n-predict=$OCR_N_PREDICT" \
+      "${PASS_THROUGH_ARGS[@]}"
   else
-    lein run --llama-only "--text-model=$TEXT_MODEL"
+    lein run --ocr-only \
+      "--vision-model=$VISION_MODEL" \
+      "--vision-mmproj=$VISION_MMPROJ" \
+      "--ocr-image=$OCR_IMAGE" \
+      "--ocr-n-predict=$OCR_N_PREDICT"
   fi
 )

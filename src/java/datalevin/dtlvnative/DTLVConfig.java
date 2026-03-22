@@ -22,10 +22,12 @@ import org.bytedeco.javacpp.tools.*;
                               "../../src/",
                               "../../src/build_dtlv/Release/",
                               "../../src/build_dtlv/llama_static_build/src/Release/",
+                              "../../src/build_dtlv/llama_static_build/tools/mtmd/Release/",
                               "../../src/build_dtlv/llama_static_build/ggml/src/Release/",
                               "../../src/build_dtlv/usearch_static_c_build/c/Release/" },
                            link = {
                               "dtlv",
+                              "mtmd",
                               "llama",
                               "ggml",
                               "ggml-cpu",

@@ -41,10 +41,11 @@ target_include_directories(dtlv PRIVATE
     ${PROJECT_SOURCE_DIR}
     ${PROJECT_SOURCE_DIR}/llama.cpp/include
     ${PROJECT_SOURCE_DIR}/llama.cpp/ggml/include
+    ${PROJECT_SOURCE_DIR}/llama.cpp/tools/mtmd
 )
 
 # Link the DLMDB static to DTLV
-target_link_libraries(dtlv PRIVATE dlmdb)
+target_link_libraries(dtlv PRIVATE dlmdb mtmd)
 
 set_target_properties(dtlv PROPERTIES
     OUTPUT_NAME dtlv
@@ -85,6 +86,8 @@ add_subdirectory(${PROJECT_SOURCE_DIR}/usearch usearch_static_c_build)
 set(LLAMA_BUILD_COMMON         OFF CACHE BOOL "" FORCE)
 set(LLAMA_BUILD_TESTS          OFF CACHE BOOL "" FORCE)
 set(LLAMA_BUILD_TOOLS          OFF CACHE BOOL "" FORCE)
+set(LLAMA_BUILD_MTMD           ON  CACHE BOOL "" FORCE)
+set(LLAMA_BUILD_MTMD_CLI       OFF CACHE BOOL "" FORCE)
 set(LLAMA_BUILD_EXAMPLES       OFF CACHE BOOL "" FORCE)
 set(LLAMA_BUILD_SERVER         OFF CACHE BOOL "" FORCE)
 set(LLAMA_OPENSSL              OFF CACHE BOOL "" FORCE)
@@ -126,13 +129,13 @@ set_target_properties(usearch_static_c PROPERTIES
 )
 
 target_link_options(dtlv PRIVATE "/WHOLEARCHIVE:usearch_static_c")
-target_link_libraries(dtlv PRIVATE usearch_static_c llama ggml ggml-base ggml-cpu)
+target_link_libraries(dtlv PRIVATE usearch_static_c mtmd llama ggml ggml-base ggml-cpu)
 
 install(TARGETS usearch_static_c
     ARCHIVE DESTINATION ${CMAKE_INSTALL_PREFIX}
 )
 
-foreach(target llama ggml ggml-base ggml-cpu)
+foreach(target llama ggml ggml-base ggml-cpu mtmd)
     if(TARGET ${target})
         set_target_properties(${target} PROPERTIES
             ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_INSTALL_PREFIX}
