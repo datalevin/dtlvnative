@@ -1,6 +1,6 @@
 # Change Log
 
-## WIP
+## 0.18.2
 ### Added
 - llama.cpp vision APIs.
 - Java smoke test for OCR.
