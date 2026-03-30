@@ -1,0 +1,12 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index b6e4bb4..acae85f 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -248,7 +248,6 @@ function (setup_target TARGET_NAME)
+                     -Wextra
+                     -Wno-conversion
+                     -Wno-unknown-pragmas
+-                    -march=native
+                     -fmax-errors=1
+                     -pedantic
+                     -fdiagnostics-color=always
