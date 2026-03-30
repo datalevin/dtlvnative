@@ -1,6 +1,6 @@
 # Change Log
 
-## WIP
+## 0.18.3
 ### Improved
 - llama.cpp version update
 - Remove the clamp to Haswell, just remove `-march=native`, so simsimd's dynamic
