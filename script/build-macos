@@ -12,6 +12,19 @@ export SOEXT=.dylib
 
 cd src/usearch
 
+sh ../../script/apply-usearch-gcc-patch
+
+SIMSIMD_X86_FLAGS=""
+if [ "$(uname -m)" = "x86_64" ]; then
+  SIMSIMD_X86_FLAGS="-D SIMSIMD_TARGET_HASWELL=1 \
+  -D SIMSIMD_TARGET_SKYLAKE=0 \
+  -D SIMSIMD_TARGET_ICE=0 \
+  -D SIMSIMD_TARGET_GENOA=0 \
+  -D SIMSIMD_TARGET_SAPPHIRE=0 \
+  -D SIMSIMD_TARGET_TURIN=0 \
+  -D SIMSIMD_TARGET_SIERRA=0"
+fi
+
 # Use LLVM clang with OpenMP. Allow overrides so CI can preinstall toolchains without Homebrew.
 LLVM_PREFIX="${LLVM_PREFIX:-}"
 LIBOMP_PREFIX="${LIBOMP_PREFIX:-}"
@@ -43,6 +56,7 @@ cmake \
     -D CMAKE_BUILD_TYPE=Release \
     -D CMAKE_C_COMPILER="$(brew --prefix llvm)/bin/clang" \
     -D CMAKE_CXX_COMPILER="$(brew --prefix llvm)/bin/clang++" \
+    ${SIMSIMD_X86_FLAGS:+$SIMSIMD_X86_FLAGS} \
     -D USEARCH_USE_FP16LIB=1 \
     -D USEARCH_USE_OPENMP=1 \
     -D USEARCH_USE_SIMSIMD=1 \
@@ -89,7 +103,6 @@ cmake \
     -D LLAMA_BUILD_TESTS=OFF \
     -D LLAMA_BUILD_TOOLS=OFF \
     -D LLAMA_BUILD_MTMD=ON \
-    -D LLAMA_BUILD_MTMD_CLI=OFF \
     -D LLAMA_BUILD_EXAMPLES=OFF \
     -D LLAMA_BUILD_SERVER=OFF \
     -B build_release

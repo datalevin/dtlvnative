@@ -1,17 +1,16 @@
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 69da97dc1..e904df95b 100644
+index caea48c50..a3f6f8201 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
-@@ -106,6 +106,8 @@ option(LLAMA_BUILD_COMMON "llama: build common utils library" ${LLAMA_STANDALONE
+@@ -106,6 +106,7 @@ option(LLAMA_BUILD_COMMON "llama: build common utils library" ${LLAMA_STANDALONE
  # extra artifacts
  option(LLAMA_BUILD_TESTS    "llama: build tests"          ${LLAMA_STANDALONE})
  option(LLAMA_BUILD_TOOLS    "llama: build tools"          ${LLAMA_STANDALONE})
 +option(LLAMA_BUILD_MTMD     "llama: build multimodal library" ${LLAMA_STANDALONE})
-+option(LLAMA_BUILD_MTMD_CLI "llama: build multimodal CLI tools" ${LLAMA_STANDALONE})
  option(LLAMA_BUILD_EXAMPLES "llama: build examples"       ${LLAMA_STANDALONE})
  option(LLAMA_BUILD_SERVER   "llama: build server example" ${LLAMA_STANDALONE})
- option(LLAMA_TOOLS_INSTALL  "llama: install tools"        ${LLAMA_TOOLS_INSTALL_DEFAULT})
-@@ -212,6 +214,8 @@ endif()
+ option(LLAMA_BUILD_WEBUI    "llama: build the embedded Web UI for server"  ON)
+@@ -213,6 +214,8 @@ endif()
  
  if (LLAMA_BUILD_COMMON AND LLAMA_BUILD_TOOLS)
      add_subdirectory(tools)
@@ -36,19 +35,19 @@ index b433c91d8..eaa538127 100644
          add_subdirectory(rpc)
      endif()
 diff --git a/tools/mtmd/CMakeLists.txt b/tools/mtmd/CMakeLists.txt
-index 3be3c27e8..2c76babd5 100644
+index b3cf15f9e..cf229aacf 100644
 --- a/tools/mtmd/CMakeLists.txt
 +++ b/tools/mtmd/CMakeLists.txt
-@@ -62,7 +62,7 @@ set_target_properties(mtmd
+@@ -68,7 +68,7 @@ set_target_properties(mtmd
      PROPERTIES
-     PUBLIC_HEADER "${MTMD_PUBLIC_HEADERS}")
+     PRIVATE_HEADER debug/mtmd-debug.h)
  
 -install(TARGETS mtmd LIBRARY PUBLIC_HEADER)
 +install(TARGETS mtmd LIBRARY ARCHIVE PUBLIC_HEADER)
  
  if (NOT MSVC)
      # for stb_image.h and miniaudio.h
-@@ -71,7 +71,6 @@ endif()
+@@ -77,7 +77,6 @@ endif()
  
  if (TARGET BUILD_INFO)
      add_dependencies(mtmd        BUILD_INFO)
@@ -56,7 +55,7 @@ index 3be3c27e8..2c76babd5 100644
  endif()
  
  # if mtmd is linked against common, we throw an error
-@@ -83,16 +82,22 @@ if (TARGET mtmd)
+@@ -89,22 +88,24 @@ if (TARGET mtmd)
      endif()
  endif()
  
@@ -64,21 +63,20 @@ index 3be3c27e8..2c76babd5 100644
 -add_executable(llama-gemma3-cli   deprecation-warning.cpp)
 -add_executable(llama-minicpmv-cli deprecation-warning.cpp)
 -add_executable(llama-qwen2vl-cli  deprecation-warning.cpp)
-+if (LLAMA_BUILD_MTMD_CLI)
-+    if (NOT TARGET common)
-+        message(FATAL_ERROR "llama-mtmd-cli requires the common target; enable LLAMA_BUILD_COMMON or disable LLAMA_BUILD_MTMD_CLI")
-+    endif()
++if (TARGET common)
++    add_executable(llama-llava-cli    deprecation-warning.cpp)
++    add_executable(llama-gemma3-cli   deprecation-warning.cpp)
++    add_executable(llama-minicpmv-cli deprecation-warning.cpp)
++    add_executable(llama-qwen2vl-cli  deprecation-warning.cpp)
  
 -set(TARGET llama-mtmd-cli)
 -add_executable         (${TARGET} mtmd-cli.cpp)
 -set_target_properties  (${TARGET} PROPERTIES OUTPUT_NAME llama-mtmd-cli)
 -if(LLAMA_TOOLS_INSTALL)
 -    install(TARGETS ${TARGET} RUNTIME)
-+    add_executable(llama-llava-cli    deprecation-warning.cpp)
-+    add_executable(llama-gemma3-cli   deprecation-warning.cpp)
-+    add_executable(llama-minicpmv-cli deprecation-warning.cpp)
-+    add_executable(llama-qwen2vl-cli  deprecation-warning.cpp)
-+
+-endif()
+-target_link_libraries  (${TARGET} PRIVATE common mtmd Threads::Threads)
+-target_compile_features(${TARGET} PRIVATE cxx_std_17)
 +    set(TARGET llama-mtmd-cli)
 +    add_executable         (${TARGET} mtmd-cli.cpp)
 +    set_target_properties  (${TARGET} PROPERTIES OUTPUT_NAME llama-mtmd-cli)
@@ -87,6 +85,15 @@ index 3be3c27e8..2c76babd5 100644
 +    endif()
 +    target_link_libraries  (${TARGET} PRIVATE common mtmd Threads::Threads)
 +    target_compile_features(${TARGET} PRIVATE cxx_std_17)
- endif()
--target_link_libraries  (${TARGET} PRIVATE common mtmd Threads::Threads)
--target_compile_features(${TARGET} PRIVATE cxx_std_17)
+ 
+-# mtmd-debug tool
+-add_executable(llama-mtmd-debug debug/mtmd-debug.cpp)
+-set_target_properties(llama-mtmd-debug PROPERTIES OUTPUT_NAME llama-mtmd-debug)
+-target_link_libraries(llama-mtmd-debug PRIVATE common mtmd Threads::Threads)
+-target_compile_features(llama-mtmd-debug PRIVATE cxx_std_17)
++    # mtmd-debug tool
++    add_executable(llama-mtmd-debug debug/mtmd-debug.cpp)
++    set_target_properties(llama-mtmd-debug PROPERTIES OUTPUT_NAME llama-mtmd-debug)
++    target_link_libraries(llama-mtmd-debug PRIVATE common mtmd Threads::Threads)
++    target_compile_features(llama-mtmd-debug PRIVATE cxx_std_17)
++endif()

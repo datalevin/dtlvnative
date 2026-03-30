@@ -1,0 +1,29 @@
+#!/bin/sh
+
+set -eu
+
+ROOT_DIR=$(
+  CDPATH= cd -- "$(dirname "$0")/.." && pwd
+)
+
+SUBMODULE_DIR="$ROOT_DIR/src/usearch"
+PATCH_FILE="$ROOT_DIR/patches/usearch-gcc-no-native.patch"
+
+[ -d "$SUBMODULE_DIR/.git" ] || [ -f "$SUBMODULE_DIR/.git" ] || {
+  echo "Missing usearch submodule checkout at $SUBMODULE_DIR" >&2
+  exit 1
+}
+
+[ -f "$PATCH_FILE" ] || {
+  echo "Missing patch file: $PATCH_FILE" >&2
+  exit 1
+}
+
+if git -C "$SUBMODULE_DIR" apply --reverse --check "$PATCH_FILE" >/dev/null 2>&1; then
+  echo "usearch gcc patch already applied"
+  exit 0
+fi
+
+git -C "$SUBMODULE_DIR" apply --check "$PATCH_FILE"
+git -C "$SUBMODULE_DIR" apply "$PATCH_FILE"
+echo "Applied usearch gcc patch"

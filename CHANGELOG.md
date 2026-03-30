@@ -1,5 +1,12 @@
 # Change Log
 
+## WIP
+### Improved
+- llama.cpp version update
+- Remove the clamp to Haswell, just remove `-march=native`, so simsimd's dynamic
+  dispatch may work.
+- Return glibc to 2.34 [Thx @baibhavbista]
+
 ## 0.18.2
 ### Added
 - llama.cpp vision APIs.
