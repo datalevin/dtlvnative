@@ -17,6 +17,9 @@ cd %PWD%
 
 cd %CPATH%
 
+call :apply_llama_mtmd_patch
+if errorlevel 1 exit /b %errorlevel%
+
 cmake -G "Visual Studio 17 2022" ^
       -DCLOSE_WARNING=on ^
       -DBUILD_TEST=off ^
@@ -100,6 +103,29 @@ if errorlevel 1 exit /b %errorlevel%
 dir "%RESOURCE_DIR%"
 
 goto :eof
+
+:apply_llama_mtmd_patch
+set LLAMA_DIR=%CPATH%\llama.cpp
+set LLAMA_PATCH=%PWD%\patches\llama-mtmd-build.patch
+if not exist "%LLAMA_DIR%\.git" (
+  echo Missing llama.cpp submodule checkout at %LLAMA_DIR%
+  exit /b 1
+)
+if not exist "%LLAMA_PATCH%" (
+  echo Missing patch file: %LLAMA_PATCH%
+  exit /b 1
+)
+git -C "%LLAMA_DIR%" apply --reverse --check "%LLAMA_PATCH%" >nul 2>nul
+if not errorlevel 1 (
+  echo llama.cpp mtmd patch already applied
+  exit /b 0
+)
+git -C "%LLAMA_DIR%" apply --check "%LLAMA_PATCH%"
+if errorlevel 1 exit /b %errorlevel%
+git -C "%LLAMA_DIR%" apply "%LLAMA_PATCH%"
+if errorlevel 1 exit /b %errorlevel%
+echo Applied llama.cpp mtmd patch
+exit /b 0
 
 :bundle_openmp_runtime
 set OMP_DLL=

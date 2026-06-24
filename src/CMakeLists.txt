@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.14...3.28)
 project(dtlv VERSION 0.11.3 LANGUAGES C)
 
 # Options for compilation
