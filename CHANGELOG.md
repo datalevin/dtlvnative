@@ -1,6 +1,6 @@
 # Change Log
 
-## WIP
+## 0.18.7
 ### Fixed
 - windows build
 
