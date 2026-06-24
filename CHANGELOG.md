@@ -1,6 +1,6 @@
 # Change Log
 
-## 0.18.5
+## 0.18.6
 ### Fixed
 - windows build
 
