@@ -1,5 +1,9 @@
 # Change Log
 
+## 0.18.5
+### Fixed
+- windows build
+
 ## 0.18.4
 ### Fixed
 - dlmdb copy back mp_pad when page split
