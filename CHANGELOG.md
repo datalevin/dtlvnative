@@ -1,5 +1,11 @@
 # Change Log
 
+## 0.18.4
+### Fixed
+- dlmdb copy back mp_pad when page split
+### Improved
+- update deps
+
 ## 0.18.3
 ### Improved
 - llama.cpp version update

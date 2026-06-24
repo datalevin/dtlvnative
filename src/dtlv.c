@@ -2332,8 +2332,10 @@ int dtlv_llama_vision_generate(dtlv_llama_vision_generator *generator,
                                int n_predict,
                                char *output,
                                size_t output_len) {
+  struct mtmd_helper_bitmap_wrapper bitmap_wrapper;
   const mtmd_bitmap *bitmaps[1];
   mtmd_bitmap *bitmap = NULL;
+  mtmd_helper_video *video_ctx = NULL;
   mtmd_input_chunks *chunks = NULL;
   char *formatted_prompt = NULL;
   struct mtmd_input_text text;
@@ -2361,8 +2363,13 @@ int dtlv_llama_vision_generate(dtlv_llama_vision_generator *generator,
   }
   fclose(image_file);
 
-  bitmap = mtmd_helper_bitmap_init_from_file(generator->mctx, image_path);
+  bitmap_wrapper = mtmd_helper_bitmap_init_from_file(generator->mctx,
+                                                     image_path,
+                                                     false);
+  bitmap = bitmap_wrapper.bitmap;
+  video_ctx = bitmap_wrapper.video_ctx;
   if (!bitmap) {
+    if (video_ctx) mtmd_helper_video_free(video_ctx);
     free(formatted_prompt);
     return -EIO;
   }
@@ -2370,6 +2377,7 @@ int dtlv_llama_vision_generate(dtlv_llama_vision_generator *generator,
   chunks = mtmd_input_chunks_init();
   if (!chunks) {
     mtmd_bitmap_free(bitmap);
+    if (video_ctx) mtmd_helper_video_free(video_ctx);
     free(formatted_prompt);
     return -ENOMEM;
   }
@@ -2383,6 +2391,7 @@ int dtlv_llama_vision_generate(dtlv_llama_vision_generator *generator,
   if (rc != 0) {
     mtmd_input_chunks_free(chunks);
     mtmd_bitmap_free(bitmap);
+    if (video_ctx) mtmd_helper_video_free(video_ctx);
     free(formatted_prompt);
     if (rc == 1) return -EINVAL;
     if (rc == 2) return -EIO;
@@ -2393,6 +2402,7 @@ int dtlv_llama_vision_generate(dtlv_llama_vision_generator *generator,
   if (n_prompt >= (llama_pos)generator->n_ctx) {
     mtmd_input_chunks_free(chunks);
     mtmd_bitmap_free(bitmap);
+    if (video_ctx) mtmd_helper_video_free(video_ctx);
     free(formatted_prompt);
     return -EMSGSIZE;
   }
@@ -2404,6 +2414,7 @@ int dtlv_llama_vision_generate(dtlv_llama_vision_generator *generator,
   if (max_predict <= 0) {
     mtmd_input_chunks_free(chunks);
     mtmd_bitmap_free(bitmap);
+    if (video_ctx) mtmd_helper_video_free(video_ctx);
     free(formatted_prompt);
     return -EMSGSIZE;
   }
@@ -2422,6 +2433,7 @@ int dtlv_llama_vision_generate(dtlv_llama_vision_generator *generator,
 
   mtmd_input_chunks_free(chunks);
   mtmd_bitmap_free(bitmap);
+  if (video_ctx) mtmd_helper_video_free(video_ctx);
   free(formatted_prompt);
 
   if (rc != 0) return -EIO;

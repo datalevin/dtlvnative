@@ -74,6 +74,8 @@ build_release/test_c
 
 cd ../llama.cpp
 
+sh ../../script/apply-llama-mtmd-patch
+
 cmake \
     -D CMAKE_OSX_SYSROOT="${SDKROOT}" \
     -D CMAKE_BUILD_TYPE=Release \
@@ -102,6 +104,7 @@ cmake \
     -D LLAMA_BUILD_COMMON=OFF \
     -D LLAMA_BUILD_TESTS=OFF \
     -D LLAMA_BUILD_TOOLS=OFF \
+    -D LLAMA_BUILD_APP=OFF \
     -D LLAMA_BUILD_MTMD=ON \
     -D LLAMA_BUILD_EXAMPLES=OFF \
     -D LLAMA_BUILD_SERVER=OFF \
