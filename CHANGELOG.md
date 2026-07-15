@@ -1,6 +1,6 @@
 # Change Log
 
-## WIP
+## 0.18.8
 ### Fixed
 - dlmdb handle re-encoding after a trunk position overflow value
 
