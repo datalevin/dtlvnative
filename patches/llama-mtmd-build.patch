@@ -1,44 +1,7 @@
-diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 82d46c23c..a3cfe7d2e 100644
---- a/CMakeLists.txt
-+++ b/CMakeLists.txt
-@@ -106,6 +106,7 @@ option(LLAMA_BUILD_COMMON "llama: build common utils library" ${LLAMA_STANDALONE
- # extra artifacts
- option(LLAMA_BUILD_TESTS     "llama: build tests"                                                                ${LLAMA_STANDALONE})
- option(LLAMA_BUILD_TOOLS     "llama: build tools"                                                                ${LLAMA_STANDALONE})
-+option(LLAMA_BUILD_MTMD      "llama: build multimodal library"                                                   ${LLAMA_STANDALONE})
- option(LLAMA_BUILD_EXAMPLES  "llama: build examples"                                                             ${LLAMA_STANDALONE})
- option(LLAMA_BUILD_SERVER    "llama: build server example"                                                       ${LLAMA_STANDALONE})
- option(LLAMA_BUILD_APP       "llama: build the unified binary"                                                   ${LLAMA_STANDALONE})
-@@ -218,6 +219,8 @@ endif()
- 
- if (LLAMA_BUILD_COMMON AND LLAMA_BUILD_TOOLS)
-     add_subdirectory(tools)
-+elseif (LLAMA_BUILD_MTMD)
-+    add_subdirectory(tools/mtmd)
- endif()
- 
- if (LLAMA_BUILD_APP)
-diff --git a/tools/CMakeLists.txt b/tools/CMakeLists.txt
-index 6e0cc1e7d..57870ca23 100644
---- a/tools/CMakeLists.txt
-+++ b/tools/CMakeLists.txt
-@@ -28,7 +28,9 @@ else()
-     add_subdirectory(tokenize)
-     add_subdirectory(parser)
-     add_subdirectory(tts)
--    add_subdirectory(mtmd)
-+    if (LLAMA_BUILD_MTMD)
-+        add_subdirectory(mtmd)
-+    endif()
-     if (GGML_RPC)
-         add_subdirectory(rpc)
-     endif()
 diff --git a/tools/mtmd/CMakeLists.txt b/tools/mtmd/CMakeLists.txt
-index 6df01f8cd..5cf753546 100644
 --- a/tools/mtmd/CMakeLists.txt
 +++ b/tools/mtmd/CMakeLists.txt
-@@ -68,7 +68,7 @@ set_target_properties(mtmd
+@@ -89,7 +89,7 @@ set_target_properties(mtmd
      PROPERTIES
      PRIVATE_HEADER debug/mtmd-debug.h)
  
@@ -55,45 +18,3 @@ index 6df01f8cd..5cf753546 100644
  endif()
  
  # if mtmd is linked against llama-common, we throw an error
-@@ -115,22 +114,24 @@ if (TARGET mtmd)
-     endif()
- endif()
- 
--add_executable(llama-llava-cli    deprecation-warning.cpp)
--add_executable(llama-gemma3-cli   deprecation-warning.cpp)
--add_executable(llama-minicpmv-cli deprecation-warning.cpp)
--add_executable(llama-qwen2vl-cli  deprecation-warning.cpp)
-+if (TARGET llama-common)
-+    add_executable(llama-llava-cli    deprecation-warning.cpp)
-+    add_executable(llama-gemma3-cli   deprecation-warning.cpp)
-+    add_executable(llama-minicpmv-cli deprecation-warning.cpp)
-+    add_executable(llama-qwen2vl-cli  deprecation-warning.cpp)
- 
--set(TARGET llama-mtmd-cli)
--add_executable         (${TARGET} mtmd-cli.cpp)
--set_target_properties  (${TARGET} PROPERTIES OUTPUT_NAME llama-mtmd-cli)
--if(LLAMA_TOOLS_INSTALL)
--    install(TARGETS ${TARGET} RUNTIME)
--endif()
--target_link_libraries  (${TARGET} PRIVATE llama-common mtmd Threads::Threads)
--target_compile_features(${TARGET} PRIVATE cxx_std_17)
-+    set(TARGET llama-mtmd-cli)
-+    add_executable         (${TARGET} mtmd-cli.cpp)
-+    set_target_properties  (${TARGET} PROPERTIES OUTPUT_NAME llama-mtmd-cli)
-+    if(LLAMA_TOOLS_INSTALL)
-+        install(TARGETS ${TARGET} RUNTIME)
-+    endif()
-+    target_link_libraries  (${TARGET} PRIVATE llama-common mtmd Threads::Threads)
-+    target_compile_features(${TARGET} PRIVATE cxx_std_17)
- 
--# mtmd-debug tool
--add_executable(llama-mtmd-debug debug/mtmd-debug.cpp)
--set_target_properties(llama-mtmd-debug PROPERTIES OUTPUT_NAME llama-mtmd-debug)
--target_link_libraries(llama-mtmd-debug PRIVATE llama-common mtmd Threads::Threads)
--target_compile_features(llama-mtmd-debug PRIVATE cxx_std_17)
-+    # mtmd-debug tool
-+    add_executable(llama-mtmd-debug debug/mtmd-debug.cpp)
-+    set_target_properties(llama-mtmd-debug PROPERTIES OUTPUT_NAME llama-mtmd-debug)
-+    target_link_libraries(llama-mtmd-debug PRIVATE llama-common mtmd Threads::Threads)
-+    target_compile_features(llama-mtmd-debug PRIVATE cxx_std_17)
-+endif()

@@ -1,0 +1,78 @@
+#!/bin/sh
+
+set -eu
+
+ROOT_DIR=$(
+  CDPATH= cd -- "$(dirname "$0")/.." && pwd
+)
+
+SUBMODULE_PATH="src/usearch"
+SUBMODULE_DIR="$ROOT_DIR/$SUBMODULE_PATH"
+PATCH_FILE="$ROOT_DIR/patches/usearch-gcc-no-native.patch"
+PATCH_HELPER="$ROOT_DIR/script/apply-usearch-gcc-patch"
+PATCH_REMOVED=0
+
+die() {
+  echo "update-usearch: $*" >&2
+  exit 1
+}
+
+restore_patch_on_failure() {
+  status=$1
+  trap - 0 HUP INT TERM
+
+  if [ "$status" -ne 0 ] && [ "$PATCH_REMOVED" -eq 1 ]; then
+    if git -C "$SUBMODULE_DIR" apply --reverse --check "$PATCH_FILE" >/dev/null 2>&1; then
+      : # The patch is already applied.
+    elif git -C "$SUBMODULE_DIR" apply --check "$PATCH_FILE" >/dev/null 2>&1; then
+      git -C "$SUBMODULE_DIR" apply "$PATCH_FILE"
+      echo "Restored the usearch GCC patch after the failed update" >&2
+    else
+      echo "update-usearch: could not restore $PATCH_FILE automatically" >&2
+    fi
+  fi
+
+  exit "$status"
+}
+
+[ -f "$PATCH_FILE" ] || die "missing patch file: $PATCH_FILE"
+[ -f "$PATCH_HELPER" ] || die "missing patch helper: $PATCH_HELPER"
+
+if [ ! -d "$SUBMODULE_DIR/.git" ] && [ ! -f "$SUBMODULE_DIR/.git" ]; then
+  echo "Initializing $SUBMODULE_PATH"
+  git -C "$ROOT_DIR" submodule update --init -- "$SUBMODULE_PATH"
+fi
+
+trap 'restore_patch_on_failure $?' 0
+trap 'exit 129' HUP
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
+# Remove only the repository-owned patch. This leaves the submodule clean for
+# checkout while preserving any unrelated changes for the safety check below.
+if git -C "$SUBMODULE_DIR" apply --reverse --check "$PATCH_FILE" >/dev/null 2>&1; then
+  git -C "$SUBMODULE_DIR" apply --reverse "$PATCH_FILE"
+  PATCH_REMOVED=1
+elif git -C "$SUBMODULE_DIR" apply --check "$PATCH_FILE" >/dev/null 2>&1; then
+  : # The patch is not currently applied.
+else
+  die "the usearch patch cannot be applied or reversed; refresh the patch before updating"
+fi
+
+# Nested submodules may be checked out at a different commit without changing
+# the usearch tree itself, so ignore that state here. Git will still refuse to
+# overwrite conflicting files when it performs the checkout.
+if ! git -C "$SUBMODULE_DIR" diff --quiet --ignore-submodules=all -- ||
+   ! git -C "$SUBMODULE_DIR" diff --cached --quiet --ignore-submodules=all --; then
+  git -C "$SUBMODULE_DIR" status --short >&2
+  die "refusing to overwrite unrelated tracked changes in $SUBMODULE_PATH"
+fi
+
+echo "Updating $SUBMODULE_PATH"
+git -C "$ROOT_DIR" submodule update --init --remote -- "$SUBMODULE_PATH"
+
+sh "$PATCH_HELPER"
+PATCH_REMOVED=0
+
+USEARCH_COMMIT=$(git -C "$SUBMODULE_DIR" rev-parse --short HEAD)
+echo "Updated usearch to $USEARCH_COMMIT and applied the local GCC patch"

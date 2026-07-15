@@ -1,5 +1,9 @@
 # Change Log
 
+## WIP
+### Fixed
+- dlmdb handle re-encoding after a trunk position overflow value
+
 ## 0.18.7
 ### Fixed
 - windows build
