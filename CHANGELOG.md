@@ -1,5 +1,9 @@
 # Change Log
 
+## 0.19.0
+### Improved
+- take macOS default durability and update deps
+
 ## 0.18.8
 ### Fixed
 - dlmdb handle re-encoding after a trunk position overflow value
