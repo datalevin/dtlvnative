@@ -1,6 +1,10 @@
 # Change Log
 
-## 0.19.0
+## 0.19.2
+### Fixed
+- fix a `get-by-rank` bug in dlmdb
+
+## 0.19.1
 ### Improved
 - take macOS default durability and update deps
 
