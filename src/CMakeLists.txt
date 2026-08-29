@@ -146,13 +146,13 @@ set_target_properties(usearch_static_c PROPERTIES
 )
 
 target_link_options(dtlv PRIVATE "/WHOLEARCHIVE:usearch_static_c")
-target_link_libraries(dtlv PRIVATE usearch_static_c mtmd llama ggml ggml-base ggml-cpu)
+target_link_libraries(dtlv PRIVATE usearch_static_c mtmd vendor-hash llama ggml ggml-base ggml-cpu)
 
 install(TARGETS usearch_static_c
     ARCHIVE DESTINATION ${CMAKE_INSTALL_PREFIX}
 )
 
-foreach(target llama ggml ggml-base ggml-cpu mtmd)
+foreach(target llama ggml ggml-base ggml-cpu mtmd vendor-hash)
     if(TARGET ${target})
         set_target_properties(${target} PROPERTIES
             ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_INSTALL_PREFIX}

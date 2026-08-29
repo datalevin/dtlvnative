@@ -11,7 +11,7 @@ exit /b %errorlevel%
 
 :main
 
-del /q "%CPATH%\dtlv.lib" "%CPATH%\llama.lib" "%CPATH%\ggml.lib" "%CPATH%\ggml-base.lib" "%CPATH%\ggml-cpu.lib" "%CPATH%\dlmdb.lib" "%CPATH%\libusearch_static_c.lib" 2>nul
+del /q "%CPATH%\dtlv.lib" "%CPATH%\mtmd.lib" "%CPATH%\vendor-hash.lib" "%CPATH%\llama.lib" "%CPATH%\ggml.lib" "%CPATH%\ggml-base.lib" "%CPATH%\ggml-cpu.lib" "%CPATH%\dlmdb.lib" "%CPATH%\libusearch_static_c.lib" 2>nul
 
 cd %PWD%
 
@@ -57,6 +57,10 @@ call :build_and_stage ggml ggml.lib
 if errorlevel 1 exit /b %errorlevel%
 call :build_and_stage llama llama.lib
 if errorlevel 1 exit /b %errorlevel%
+call :build_and_stage vendor-hash vendor-hash.lib
+if errorlevel 1 exit /b %errorlevel%
+call :build_and_stage mtmd mtmd.lib
+if errorlevel 1 exit /b %errorlevel%
 call :build_and_stage dtlv dtlv.lib
 if errorlevel 1 exit /b %errorlevel%
 
@@ -66,7 +70,7 @@ cd %CPATH%
 
 dir %CPATH%
 
-for %%L in (dtlv.lib llama.lib ggml.lib ggml-base.lib ggml-cpu.lib dlmdb.lib libusearch_static_c.lib) do (
+for %%L in (dtlv.lib mtmd.lib vendor-hash.lib llama.lib ggml.lib ggml-base.lib ggml-cpu.lib dlmdb.lib libusearch_static_c.lib) do (
   if not exist "%CPATH%\%%L" (
     echo Missing %%L after build_dtlv completed.
     dir %CPATH%\*.lib

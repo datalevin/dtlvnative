@@ -2365,7 +2365,8 @@ int dtlv_llama_vision_generate(dtlv_llama_vision_generator *generator,
 
   bitmap_wrapper = mtmd_helper_bitmap_init_from_file(generator->mctx,
                                                      image_path,
-                                                     false);
+                                                     false,
+                                                     mtmd_helper_init_opt_default());
   bitmap = bitmap_wrapper.bitmap;
   video_ctx = bitmap_wrapper.video_ctx;
   if (!bitmap) {

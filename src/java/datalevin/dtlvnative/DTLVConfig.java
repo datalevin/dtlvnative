@@ -28,6 +28,7 @@ import org.bytedeco.javacpp.tools.*;
                            link = {
                               "dtlv",
                               "mtmd",
+                              "vendor-hash",
                               "llama",
                               "ggml",
                               "ggml-cpu",
