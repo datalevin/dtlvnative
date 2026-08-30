@@ -1,5 +1,11 @@
 # Change Log
 
+## WIP
+## Improved
+- add LEAF2 page optimizations in dlmdb
+## Fixed
+- dupsort performance regression in dlmdb
+
 ## 0.19.2
 ### Fixed
 - fix a `get-by-rank` bug in dlmdb
