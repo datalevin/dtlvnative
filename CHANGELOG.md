@@ -1,6 +1,6 @@
 # Change Log
 
-## WIP
+## 0.19.3
 ## Improved
 - add LEAF2 page optimizations in dlmdb
 ## Fixed
