@@ -1,6 +1,6 @@
 # Change Log
 
-## WIP
+## 0.19.4
 ## Improved
 - LEAF2 write path optimization in dlmdb
 
