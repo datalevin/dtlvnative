@@ -1,6 +1,6 @@
 # Change Log
 
-## WIP
+## 0.19.5
 ## Improved
 - avoid unnecessary `MS_ASYNC` writeback on macOS in dlmdb
 
