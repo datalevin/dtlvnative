@@ -1,5 +1,9 @@
 # Change Log
 
+## WIP
+## Improved
+- avoid unnecessary `MS_ASYNC` writeback on macOS in dlmdb
+
 ## 0.19.4
 ## Improved
 - LEAF2 write path optimization in dlmdb
