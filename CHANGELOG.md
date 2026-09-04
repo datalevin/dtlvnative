@@ -1,5 +1,23 @@
 # Change Log
 
+## WIP
+### Changed
+- update dlmdb to 1.1.0 (`310e049d6e`)
+- dlmdb data format is now version 2; existing version 1 databases must be
+  dumped with the old library and reloaded with the new library before use
+- reject zero-length DUPSORT values with `MDB_BAD_VALSIZE`
+- expose `MDB_PROBLEM` and `MDB_DBIS_BUSY` in the Java bindings and update
+  the version constants and `MDB_LAST_ERRCODE` to match dlmdb
+### Fixed
+- add missing C++ standard headers to the USearch and llama.cpp patches
+  for LLVM 23 builds
+- page-split sizing for odd-sized keys/data and counted branch pages
+- large writes and duplicate-tree page statistics in dlmdb
+- reclaim named-database pages when dropping the main database; return
+  `MDB_DBIS_BUSY` while named database handles remain open
+- compact-copy SIGPIPE handling and linker warnings on macOS
+- avoid `fdatasync` on FreeBSD 11.0
+
 ## 0.19.5
 ## Improved
 - avoid unnecessary `MS_ASYNC` writeback on macOS in dlmdb

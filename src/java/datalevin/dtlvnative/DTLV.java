@@ -232,11 +232,11 @@ public class DTLV extends datalevin.dtlvnative.DTLVConfig {
      * \{
      */
     /** Library major version */
-    public static final int MDB_VERSION_MAJOR = 0;
+    public static final int MDB_VERSION_MAJOR = 1;
     /** Library minor version */
-    public static final int MDB_VERSION_MINOR = 9;
+    public static final int MDB_VERSION_MINOR = 1;
     /** Library patch version */
-    public static final int MDB_VERSION_PATCH = 33;
+    public static final int MDB_VERSION_PATCH = 0;
 
     /** Combine args a,b,c into a single integer for easy version comparisons */
     // #define MDB_VERINT(a,b,c) (((a) << 24) | ((b) << 16) | (c))
@@ -662,8 +662,12 @@ public class DTLV extends datalevin.dtlvnative.DTLVConfig {
     public static final int MDB_BAD_VALSIZE = (-30781);
     /** The specified DBI was changed unexpectedly */
     public static final int MDB_BAD_DBI = (-30780);
+    /** Unexpected problem - txn should abort */
+    public static final int MDB_PROBLEM = (-30779);
+    /** Can't drop main DBI while other DBIs are open */
+    public static final int MDB_DBIS_BUSY = (-30778);
     /** The last defined error code */
-    public static final int MDB_LAST_ERRCODE = MDB_BAD_DBI;
+    public static final int MDB_LAST_ERRCODE = MDB_DBIS_BUSY;
 
     /** \} */
 

@@ -18,3 +18,63 @@ diff --git a/tools/mtmd/CMakeLists.txt b/tools/mtmd/CMakeLists.txt
  endif()
  
  # if mtmd is linked against llama-common, we throw an error
+diff --git a/ggml/src/gguf.cpp b/ggml/src/gguf.cpp
+index 6c7b58178..63363ba78 100644
+--- a/ggml/src/gguf.cpp
++++ b/ggml/src/gguf.cpp
+@@ -3,6 +3,7 @@
+ #include "ggml-impl.h"
+ #include "gguf.h"
+
++#include <cerrno>
+ #include <cinttypes>
+ #include <cstddef>
+ #include <cstdint>
+diff --git a/src/llama-context.cpp b/src/llama-context.cpp
+index 9aed80133..2ae989341 100644
+--- a/src/llama-context.cpp
++++ b/src/llama-context.cpp
+@@ -15,6 +15,7 @@
+
+ #include <cinttypes>
+ #include <cmath>
++#include <cstdlib>
+ #include <cstring>
+ #include <limits>
+ #include <stdexcept>
+diff --git a/src/llama-graph.h b/src/llama-graph.h
+index b388e028c..78d1af92b 100644
+--- a/src/llama-graph.h
++++ b/src/llama-graph.h
+@@ -6,6 +6,7 @@
+ #include "llama-adapter.h"
+
+ #include <cstdint>
++#include <cstdlib>
+ #include <vector>
+ #include <memory>
+ #include <set>
+diff --git a/src/llama-mmap.cpp b/src/llama-mmap.cpp
+index 4d183cbc9..87b2ace6c 100644
+--- a/src/llama-mmap.cpp
++++ b/src/llama-mmap.cpp
+@@ -4,6 +4,7 @@
+
+ #include "ggml.h"
+
++#include <cstdlib>
+ #include <cstring>
+ #include <climits>
+ #include <stdexcept>
+diff --git a/src/llama-vocab.cpp b/src/llama-vocab.cpp
+index ff926ceec..f87c813db 100644
+--- a/src/llama-vocab.cpp
++++ b/src/llama-vocab.cpp
+@@ -13,6 +13,7 @@
+ #include <cfloat>
+ #include <cmath>
+ #include <cstdarg>
++#include <cstdlib>
+ #include <cstring>
+ #include <forward_list>
+ #include <limits>
