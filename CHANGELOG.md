@@ -1,6 +1,6 @@
 # Change Log
 
-## WIP
+## 1.0.0
 ### Changed
 - update dlmdb to 1.1.0 (`310e049d6e`)
 - dlmdb data format is now version 2; existing version 1 databases must be
