@@ -25,7 +25,7 @@ index 6c7b58178..63363ba78 100644
 @@ -3,6 +3,7 @@
  #include "ggml-impl.h"
  #include "gguf.h"
-
+ 
 +#include <cerrno>
  #include <cinttypes>
  #include <cstddef>
@@ -35,7 +35,7 @@ index 9aed80133..2ae989341 100644
 --- a/src/llama-context.cpp
 +++ b/src/llama-context.cpp
 @@ -15,6 +15,7 @@
-
+ 
  #include <cinttypes>
  #include <cmath>
 +#include <cstdlib>
@@ -48,7 +48,7 @@ index b388e028c..78d1af92b 100644
 +++ b/src/llama-graph.h
 @@ -6,6 +6,7 @@
  #include "llama-adapter.h"
-
+ 
  #include <cstdint>
 +#include <cstdlib>
  #include <vector>
@@ -59,9 +59,9 @@ index 4d183cbc9..87b2ace6c 100644
 --- a/src/llama-mmap.cpp
 +++ b/src/llama-mmap.cpp
 @@ -4,6 +4,7 @@
-
+ 
  #include "ggml.h"
-
+ 
 +#include <cstdlib>
  #include <cstring>
  #include <climits>
