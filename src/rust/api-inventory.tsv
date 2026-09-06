@@ -1,0 +1,153 @@
+family	symbol	c_signature	header	javacpp	datalevin_callers	dtlv_internal	condition
+dtlv_key_iter	dtlv_key_iter_create	int (dtlv_key_iter **, MDB_cursor *, MDB_val *, MDB_val *, int, int, int, MDB_val *, MDB_val *)	src/dtlv.h:44	yes	src/datalevin/binding/cpp.clj	no	default
+dtlv_key_iter	dtlv_key_iter_destroy	void (dtlv_key_iter *)	src/dtlv.h:64	yes	src/datalevin/binding/cpp.clj	no	default
+dtlv_key_iter	dtlv_key_iter_has_next	int (dtlv_key_iter *)	src/dtlv.h:57	yes	src/datalevin/binding/cpp.clj	no	default
+dtlv_key_rank_sample_iter	dtlv_key_rank_sample_iter_create	int (dtlv_key_rank_sample_iter **, size_t *, int, MDB_cursor *, MDB_val *, MDB_val *, MDB_val *, MDB_val *)	src/dtlv.h:88	yes	src/datalevin/binding/cpp.clj	no	default
+dtlv_key_rank_sample_iter	dtlv_key_rank_sample_iter_destroy	void (dtlv_key_rank_sample_iter *)	src/dtlv.h:107	yes	src/datalevin/binding/cpp.clj	no	default
+dtlv_key_rank_sample_iter	dtlv_key_rank_sample_iter_has_next	int (dtlv_key_rank_sample_iter *)	src/dtlv.h:100	yes	src/datalevin/binding/cpp.clj	no	default
+dtlv_list_iter	dtlv_list_iter_create	int (dtlv_list_iter **, MDB_cursor *, MDB_val *, MDB_val *, int, int, int, MDB_val *, MDB_val *, int, int, int, MDB_val *, MDB_val *)	src/dtlv.h:134	yes	src/datalevin/binding/cpp.clj	no	default
+dtlv_list_iter	dtlv_list_iter_destroy	void (dtlv_list_iter *)	src/dtlv.h:156	yes	src/datalevin/binding/cpp.clj	no	default
+dtlv_list_iter	dtlv_list_iter_has_next	int (dtlv_list_iter *)	src/dtlv.h:149	yes	src/datalevin/binding/cpp.clj	no	default
+dtlv_list_key_range_full_val_iter	dtlv_list_key_range_full_val_iter_create	int (dtlv_list_key_range_full_val_iter **, MDB_cursor *, MDB_val *, MDB_val *, int, int, MDB_val *, MDB_val *)	src/dtlv.h:279	yes	src/datalevin/binding/cpp.clj	no	default
+dtlv_list_key_range_full_val_iter	dtlv_list_key_range_full_val_iter_destroy	void (dtlv_list_key_range_full_val_iter *)	src/dtlv.h:298	yes	src/datalevin/binding/cpp.clj	no	default
+dtlv_list_key_range_full_val_iter	dtlv_list_key_range_full_val_iter_has_next	int (dtlv_list_key_range_full_val_iter *)	src/dtlv.h:290	yes	src/datalevin/binding/cpp.clj	no	default
+dtlv_list_rank_sample_iter	dtlv_list_rank_sample_iter_create	int (dtlv_list_rank_sample_iter **, size_t *, int, MDB_cursor *, MDB_val *, MDB_val *, MDB_val *, MDB_val *)	src/dtlv.h:321	yes	src/datalevin/binding/cpp.clj	no	default
+dtlv_list_rank_sample_iter	dtlv_list_rank_sample_iter_destroy	void (dtlv_list_rank_sample_iter *)	src/dtlv.h:340	yes	src/datalevin/binding/cpp.clj	no	default
+dtlv_list_rank_sample_iter	dtlv_list_rank_sample_iter_has_next	int (dtlv_list_rank_sample_iter *)	src/dtlv.h:333	yes	src/datalevin/binding/cpp.clj	no	default
+dtlv.count	dtlv_list_val_count	size_t (MDB_cursor *, MDB_val *, MDB_val *)	src/dtlv.h:256	yes	src/datalevin/binding/cpp.clj	no	default
+dtlv_list_val_full_iter	dtlv_list_val_full_iter_create	int (dtlv_list_val_full_iter **, MDB_cursor *, MDB_val *, MDB_val *)	src/dtlv.h:219	yes	src/datalevin/binding/cpp.clj	no	default
+dtlv_list_val_full_iter	dtlv_list_val_full_iter_destroy	void (dtlv_list_val_full_iter *)	src/dtlv.h:246	yes	src/datalevin/binding/cpp.clj	no	default
+dtlv_list_val_full_iter	dtlv_list_val_full_iter_has_next	int (dtlv_list_val_full_iter *)	src/dtlv.h:239	yes	src/datalevin/binding/cpp.clj	no	default
+dtlv_list_val_full_iter	dtlv_list_val_full_iter_seek	int (dtlv_list_val_full_iter *, MDB_val *)	src/dtlv.h:230	yes	src/datalevin/binding/cpp.clj	no	default
+dtlv_list_val_iter	dtlv_list_val_iter_create	int (dtlv_list_val_iter **, MDB_cursor *, MDB_val *, MDB_val *, MDB_val *, MDB_val *)	src/dtlv.h:175	yes		no	default
+dtlv_list_val_iter	dtlv_list_val_iter_destroy	void (dtlv_list_val_iter *)	src/dtlv.h:202	yes		no	default
+dtlv_list_val_iter	dtlv_list_val_iter_has_next	int (dtlv_list_val_iter *)	src/dtlv.h:195	yes		no	default
+dtlv_list_val_iter	dtlv_list_val_iter_seek	int (dtlv_list_val_iter *, MDB_val *)	src/dtlv.h:186	yes		no	default
+llama.embedder	dtlv_llama_detokenize	int (dtlv_llama_embedder *, const int *, int, char *, int)	src/dtlv.h:420	yes	src/java/datalevin/llm/LlamaEmbedder.java	no	default
+llama.embedder	dtlv_llama_embed	int (dtlv_llama_embedder *, const char *, float *, size_t)	src/dtlv.h:438	yes	src/java/datalevin/llm/LlamaEmbedder.java	no	default
+llama.embedder	dtlv_llama_embed_batch	int (dtlv_llama_embedder *, const char **, int, float *, size_t)	src/dtlv.h:458	yes		no	default
+llama.embedder	dtlv_llama_embedder_create	int (dtlv_llama_embedder **, const char *, int, int, int, int)	src/dtlv.h:359	yes	src/java/datalevin/llm/LlamaEmbedder.java	no	default
+llama.embedder	dtlv_llama_embedder_destroy	void (dtlv_llama_embedder *)	src/dtlv.h:469	yes	src/java/datalevin/llm/LlamaEmbedder.java	no	default
+llama.embedder	dtlv_llama_embedder_n_ctx	int (dtlv_llama_embedder *)	src/dtlv.h:390	yes	src/java/datalevin/llm/LlamaEmbedder.java	no	default
+llama.embedder	dtlv_llama_embedder_n_embd	int (dtlv_llama_embedder *)	src/dtlv.h:372	yes	src/java/datalevin/llm/LlamaEmbedder.java	no	default
+llama.generator	dtlv_llama_generate	int (dtlv_llama_generator *, const char *, int, char *, size_t)	src/dtlv.h:529	yes	src/java/datalevin/llm/LlamaGenerator.java	no	default
+llama.generator	dtlv_llama_generator_create	int (dtlv_llama_generator **, const char *, int, int, int)	src/dtlv.h:490	yes	src/java/datalevin/llm/LlamaGenerator.java	no	default
+llama.generator	dtlv_llama_generator_destroy	void (dtlv_llama_generator *)	src/dtlv.h:564	yes	src/java/datalevin/llm/LlamaGenerator.java	no	default
+llama.generator	dtlv_llama_generator_n_ctx	int (dtlv_llama_generator *)	src/dtlv.h:502	yes	src/java/datalevin/llm/LlamaGenerator.java	no	default
+llama.generator	dtlv_llama_generator_token_count	int (dtlv_llama_generator *, const char *)	src/dtlv.h:511	yes	src/java/datalevin/llm/LlamaGenerator.java	no	default
+llama.vision	dtlv_llama_ocr	int (dtlv_llama_vision_generator *, const char *, int, char *, size_t)	src/dtlv.h:645	yes		no	default
+llama.generator	dtlv_llama_summarize	int (dtlv_llama_generator *, const char *, int, char *, size_t)	src/dtlv.h:553	yes	src/java/datalevin/llm/LlamaGenerator.java	no	default
+llama.embedder	dtlv_llama_token_count	int (dtlv_llama_embedder *, const char *)	src/dtlv.h:381	yes	src/java/datalevin/llm/LlamaEmbedder.java	no	default
+llama.embedder	dtlv_llama_tokenize	int (dtlv_llama_embedder *, const char *, int *, int)	src/dtlv.h:403	yes	src/java/datalevin/llm/LlamaEmbedder.java	no	default
+llama.vision	dtlv_llama_vision_generate	int (dtlv_llama_vision_generator *, const char *, const char *, int, char *, size_t)	src/dtlv.h:627	yes		no	default
+llama.vision	dtlv_llama_vision_generator_create	int (dtlv_llama_vision_generator **, const char *, const char *, int, int, int, int, int)	src/dtlv.h:593	yes		no	default
+llama.vision	dtlv_llama_vision_generator_destroy	void (dtlv_llama_vision_generator *)	src/dtlv.h:656	yes		no	default
+llama.vision	dtlv_llama_vision_generator_n_ctx	int (dtlv_llama_vision_generator *)	src/dtlv.h:608	yes		no	default
+dlmdb.database	mdb_cmp	int (MDB_txn *, MDB_dbi, const MDB_val *, const MDB_val *)	src/lmdb/libraries/liblmdb/dlmdb.h:1750	yes		yes	default
+dlmdb.count_rank	mdb_count_all	int (MDB_txn *, MDB_dbi, unsigned int, uint64_t *)	src/lmdb/libraries/liblmdb/dlmdb.h:1233	yes	src/datalevin/binding/cpp.clj	yes	default
+dlmdb.count_rank	mdb_count_range	int (MDB_txn *, MDB_dbi, const MDB_val *, const MDB_val *, unsigned int, uint64_t *)	src/lmdb/libraries/liblmdb/dlmdb.h:1234	yes		no	default
+dlmdb.cursor	mdb_cursor_close	void (MDB_cursor *)	src/lmdb/libraries/liblmdb/dlmdb.h:1561	yes	src/java/datalevin/cpp/Cursor.java	no	default
+dlmdb.cursor	mdb_cursor_count	int (MDB_cursor *, mdb_size_t *)	src/lmdb/libraries/liblmdb/dlmdb.h:1713	yes	src/java/datalevin/cpp/Cursor.java	yes	default
+dlmdb.cursor	mdb_cursor_dbi	MDB_dbi (MDB_cursor *)	src/lmdb/libraries/liblmdb/dlmdb.h:1591	yes		yes	default
+dlmdb.cursor	mdb_cursor_del	int (MDB_cursor *, unsigned int)	src/lmdb/libraries/liblmdb/dlmdb.h:1699	yes	src/java/datalevin/cpp/Cursor.java	no	default
+dlmdb.cursor	mdb_cursor_get	int (MDB_cursor *, MDB_val *, MDB_val *, MDB_cursor_op)	src/lmdb/libraries/liblmdb/dlmdb.h:1612	yes	src/java/datalevin/cpp/Cursor.java	yes	default
+dlmdb.count_rank	mdb_cursor_get_rank	int (MDB_cursor *, uint64_t, MDB_val *, MDB_val *, unsigned int)	src/lmdb/libraries/liblmdb/dlmdb.h:1293	yes		yes	default
+dlmdb.count_rank	mdb_cursor_key_rank	int (MDB_cursor *, const MDB_val *, const MDB_val *, unsigned int, uint64_t *)	src/lmdb/libraries/liblmdb/dlmdb.h:1313	yes		yes	default
+dlmdb.cursor	mdb_cursor_list_dup	int (MDB_cursor *, const MDB_val **, mdb_size_t *)	src/lmdb/libraries/liblmdb/dlmdb.h:1737	no		yes	default
+dlmdb.cursor	mdb_cursor_open	int (MDB_txn *, MDB_dbi, MDB_cursor **)	src/lmdb/libraries/liblmdb/dlmdb.h:1553	yes	src/java/datalevin/cpp/Cursor.java	no	default
+dlmdb.cursor	mdb_cursor_put	int (MDB_cursor *, MDB_val *, MDB_val *, unsigned int)	src/lmdb/libraries/liblmdb/dlmdb.h:1675	yes	src/java/datalevin/cpp/Cursor.java	no	default
+dlmdb.cursor	mdb_cursor_renew	int (MDB_txn *, MDB_cursor *)	src/lmdb/libraries/liblmdb/dlmdb.h:1579	yes	src/java/datalevin/cpp/Cursor.java	no	default
+dlmdb.cursor	mdb_cursor_txn	MDB_txn *(MDB_cursor *)	src/lmdb/libraries/liblmdb/dlmdb.h:1585	yes		yes	default
+dlmdb.database	mdb_dbi_close	void (MDB_env *, MDB_dbi)	src/lmdb/libraries/liblmdb/dlmdb.h:1336	yes		no	default
+dlmdb.database	mdb_dbi_flags	int (MDB_txn *, MDB_dbi, unsigned int *)	src/lmdb/libraries/liblmdb/dlmdb.h:1227	yes		no	default
+dlmdb.database	mdb_dbi_open	int (MDB_txn *, const char *, unsigned int, MDB_dbi *)	src/lmdb/libraries/liblmdb/dlmdb.h:1204	yes	src/java/datalevin/cpp/Dbi.java	no	default
+dlmdb.database	mdb_dcmp	int (MDB_txn *, MDB_dbi, const MDB_val *, const MDB_val *)	src/lmdb/libraries/liblmdb/dlmdb.h:1762	yes		no	default
+dlmdb.kv	mdb_del	int (MDB_txn *, MDB_dbi, MDB_val *, MDB_val *)	src/lmdb/libraries/liblmdb/dlmdb.h:1529	yes	src/java/datalevin/cpp/Dbi.java	no	default
+dlmdb.database	mdb_drop	int (MDB_txn *, MDB_dbi, int)	src/lmdb/libraries/liblmdb/dlmdb.h:1347	yes	src/datalevin/binding/cpp.clj;src/java/datalevin/ha/LMDBLogStorage.java	no	default
+dlmdb.environment	mdb_env_close	void (MDB_env *)	src/lmdb/libraries/liblmdb/dlmdb.h:813	yes	src/java/datalevin/cpp/Env.java	no	default
+dlmdb.environment	mdb_env_copy	int (MDB_env *, const char *)	src/lmdb/libraries/liblmdb/dlmdb.h:707	yes		no	default
+dlmdb.environment	mdb_env_copy2	int (MDB_env *, const char *, unsigned int)	src/lmdb/libraries/liblmdb/dlmdb.h:747	yes	src/java/datalevin/cpp/Env.java	no	default
+dlmdb.environment	mdb_env_copyfd	int (MDB_env *, mdb_filehandle_t)	src/lmdb/libraries/liblmdb/dlmdb.h:722	no		no	default
+dlmdb.environment	mdb_env_copyfd2	int (MDB_env *, mdb_filehandle_t, unsigned int)	src/lmdb/libraries/liblmdb/dlmdb.h:766	no		no	default
+dlmdb.environment	mdb_env_create	int (MDB_env **)	src/lmdb/libraries/liblmdb/dlmdb.h:557	yes	src/java/datalevin/cpp/Env.java	no	default
+dlmdb.environment	mdb_env_get_fd	int (MDB_env *, mdb_filehandle_t *)	src/lmdb/libraries/liblmdb/dlmdb.h:871	no		no	default
+dlmdb.environment	mdb_env_get_flags	int (MDB_env *, unsigned int *)	src/lmdb/libraries/liblmdb/dlmdb.h:841	yes	src/java/datalevin/cpp/Env.java	no	default
+dlmdb.environment	mdb_env_get_maxkeysize	int (MDB_env *)	src/lmdb/libraries/liblmdb/dlmdb.h:965	yes		no	default
+dlmdb.environment	mdb_env_get_maxreaders	int (MDB_env *, unsigned int *)	src/lmdb/libraries/liblmdb/dlmdb.h:936	yes		no	default
+dlmdb.environment	mdb_env_get_path	int (MDB_env *, const char **)	src/lmdb/libraries/liblmdb/dlmdb.h:855	yes		no	default
+dlmdb.environment	mdb_env_get_userctx	void *(MDB_env *)	src/lmdb/libraries/liblmdb/dlmdb.h:980	yes		no	default
+dlmdb.environment	mdb_env_info	int (MDB_env *, MDB_envinfo *)	src/lmdb/libraries/liblmdb/dlmdb.h:782	yes	src/java/datalevin/cpp/Info.java	no	default
+dlmdb.environment	mdb_env_open	int (MDB_env *, const char *, unsigned int, mdb_mode_t)	src/lmdb/libraries/liblmdb/dlmdb.h:691	yes	src/java/datalevin/cpp/Env.java	no	default
+dlmdb.environment	mdb_env_set_assert	int (MDB_env *, MDB_assert_func *)	src/lmdb/libraries/liblmdb/dlmdb.h:1008	yes		no	default
+dlmdb.environment	mdb_env_set_flags	int (MDB_env *, unsigned int, int)	src/lmdb/libraries/liblmdb/dlmdb.h:829	yes	src/java/datalevin/cpp/Env.java	no	default
+dlmdb.environment	mdb_env_set_interrupt	int (MDB_env *, int)	src/lmdb/libraries/liblmdb/dlmdb.h:991	no		no	default
+dlmdb.environment	mdb_env_set_mapsize	int (MDB_env *, mdb_size_t)	src/lmdb/libraries/liblmdb/dlmdb.h:905	yes	src/java/datalevin/cpp/Env.java	no	default
+dlmdb.environment	mdb_env_set_maxdbs	int (MDB_env *, MDB_dbi)	src/lmdb/libraries/liblmdb/dlmdb.h:956	yes	src/java/datalevin/cpp/Env.java	no	default
+dlmdb.environment	mdb_env_set_maxreaders	int (MDB_env *, unsigned int)	src/lmdb/libraries/liblmdb/dlmdb.h:924	yes	src/java/datalevin/cpp/Env.java	no	default
+dlmdb.environment	mdb_env_set_userctx	int (MDB_env *, void *)	src/lmdb/libraries/liblmdb/dlmdb.h:973	yes		no	default
+dlmdb.environment	mdb_env_stat	int (MDB_env *, MDB_stat *)	src/lmdb/libraries/liblmdb/dlmdb.h:774	yes	src/java/datalevin/cpp/Stat.java	no	default
+dlmdb.environment	mdb_env_sync	int (MDB_env *, int)	src/lmdb/libraries/liblmdb/dlmdb.h:803	yes	src/java/datalevin/cpp/Env.java	no	default
+dlmdb.kv	mdb_get	int (MDB_txn *, MDB_dbi, MDB_val *, MDB_val *)	src/lmdb/libraries/liblmdb/dlmdb.h:1455	yes	src/datalevin/binding/cpp.clj;src/java/datalevin/ha/LMDBLogStorage.java	no	default
+dlmdb.count_rank	mdb_get_key_rank	int (MDB_txn *, MDB_dbi, const MDB_val *, const MDB_val *, uint64_t *)	src/lmdb/libraries/liblmdb/dlmdb.h:1317	yes	src/datalevin/binding/cpp.clj	no	default
+dlmdb.count_rank	mdb_get_rank	int (MDB_txn *, MDB_dbi, uint64_t, MDB_val *, MDB_val *)	src/lmdb/libraries/liblmdb/dlmdb.h:1297	yes	src/datalevin/binding/cpp.clj	no	default
+dlmdb.diagnostics	mdb_profile_reset	void (void)	src/lmdb/libraries/liblmdb/dlmdb.h:1277	no		no	MDB_PROFILE_RANGE
+dlmdb.diagnostics	mdb_profile_snapshot	void (MDB_profile_stats *)	src/lmdb/libraries/liblmdb/dlmdb.h:1278	no		no	MDB_PROFILE_RANGE
+dlmdb.kv	mdb_put	int (MDB_txn *, MDB_dbi, MDB_val *, MDB_val *, unsigned int)	src/lmdb/libraries/liblmdb/dlmdb.h:1504	yes	src/java/datalevin/cpp/Dbi.java	no	default
+dlmdb.count_rank	mdb_range_count_keys	int (MDB_txn *, MDB_dbi, const MDB_val *, const MDB_val *, unsigned int, uint64_t *)	src/lmdb/libraries/liblmdb/dlmdb.h:1250	yes	src/datalevin/binding/cpp.clj	no	default
+dlmdb.count_rank	mdb_range_count_values	int (MDB_txn *, MDB_dbi, const MDB_val *, const MDB_val *, unsigned int, uint64_t *)	src/lmdb/libraries/liblmdb/dlmdb.h:1253	yes	src/datalevin/binding/cpp.clj	no	default
+dlmdb.diagnostics	mdb_reader_check	int (MDB_env *, int *)	src/lmdb/libraries/liblmdb/dlmdb.h:1787	yes	src/java/datalevin/cpp/Env.java	no	default
+dlmdb.diagnostics	mdb_reader_list	int (MDB_env *, MDB_msg_func *, void *)	src/lmdb/libraries/liblmdb/dlmdb.h:1779	yes		no	default
+dlmdb.database	mdb_set_compare	int (MDB_txn *, MDB_dbi, MDB_cmp_func *)	src/lmdb/libraries/liblmdb/dlmdb.h:1368	yes		no	default
+dlmdb.database	mdb_set_dupsort	int (MDB_txn *, MDB_dbi, MDB_cmp_func *)	src/lmdb/libraries/liblmdb/dlmdb.h:1391	yes		no	default
+dlmdb.database	mdb_set_relctx	int (MDB_txn *, MDB_dbi, void *)	src/lmdb/libraries/liblmdb/dlmdb.h:1427	yes		no	default
+dlmdb.database	mdb_set_relfunc	int (MDB_txn *, MDB_dbi, MDB_rel_func *)	src/lmdb/libraries/liblmdb/dlmdb.h:1411	yes		no	default
+dlmdb.database	mdb_stat	int (MDB_txn *, MDB_dbi, MDB_stat *)	src/lmdb/libraries/liblmdb/dlmdb.h:1218	yes	src/java/datalevin/cpp/Stat.java	no	default
+dlmdb.diagnostics	mdb_strerror	char *(int)	src/lmdb/libraries/liblmdb/dlmdb.h:544	yes	src/java/datalevin/cpp/Util.java	no	default
+dlmdb.transaction	mdb_txn_abort	void (MDB_txn *)	src/lmdb/libraries/liblmdb/dlmdb.h:1093	yes	src/java/datalevin/cpp/Txn.java	no	default
+dlmdb.transaction	mdb_txn_begin	int (MDB_env *, MDB_txn *, unsigned int, MDB_txn **)	src/lmdb/libraries/liblmdb/dlmdb.h:1048	yes	src/java/datalevin/cpp/Txn.java	no	default
+dlmdb.transaction	mdb_txn_commit	int (MDB_txn *)	src/lmdb/libraries/liblmdb/dlmdb.h:1083	yes	src/java/datalevin/cpp/Txn.java	no	default
+dlmdb.transaction	mdb_txn_env	MDB_env *(MDB_txn *)	src/lmdb/libraries/liblmdb/dlmdb.h:1054	yes		no	default
+dlmdb.transaction	mdb_txn_id	mdb_size_t (MDB_txn *)	src/lmdb/libraries/liblmdb/dlmdb.h:1065	yes		no	default
+dlmdb.transaction	mdb_txn_renew	int (MDB_txn *)	src/lmdb/libraries/liblmdb/dlmdb.h:1128	yes	src/java/datalevin/cpp/Txn.java	no	default
+dlmdb.transaction	mdb_txn_reset	void (MDB_txn *)	src/lmdb/libraries/liblmdb/dlmdb.h:1112	yes	src/java/datalevin/cpp/Txn.java	no	default
+dlmdb.diagnostics	mdb_version	char *(int *, int *, int *)	src/lmdb/libraries/liblmdb/dlmdb.h:532	yes	src/java/datalevin/cpp/Util.java	no	default
+usearch	usearch_add	void (usearch_index_t, usearch_key_t, const void *, usearch_scalar_kind_t, usearch_error_t *)	src/usearch/c/usearch.h:357	yes	src/java/datalevin/cpp/VecIdx.java	no	default
+usearch	usearch_capacity	size_t (usearch_index_t, usearch_error_t *)	src/usearch/c/usearch.h:257	yes	src/java/datalevin/cpp/VecIdx.java	no	default
+usearch	usearch_change_expansion_add	void (usearch_index_t, size_t, usearch_error_t *)	src/usearch/c/usearch.h:303	yes		no	default
+usearch	usearch_change_expansion_search	void (usearch_index_t, size_t, usearch_error_t *)	src/usearch/c/usearch.h:311	yes		no	default
+usearch	usearch_change_metric	void (usearch_index_t, usearch_metric_t, void *, usearch_metric_kind_t, usearch_error_t *)	src/usearch/c/usearch.h:346	yes		no	default
+usearch	usearch_change_metric_kind	void (usearch_index_t, usearch_metric_kind_t, usearch_error_t *)	src/usearch/c/usearch.h:335	yes		no	default
+usearch	usearch_change_threads_add	void (usearch_index_t, size_t, usearch_error_t *)	src/usearch/c/usearch.h:319	yes		no	default
+usearch	usearch_change_threads_search	void (usearch_index_t, size_t, usearch_error_t *)	src/usearch/c/usearch.h:327	yes		no	default
+usearch	usearch_clear	void (usearch_index_t, usearch_error_t *)	src/usearch/c/usearch.h:500	no		no	default
+usearch	usearch_connectivity	size_t (usearch_index_t, usearch_error_t *)	src/usearch/c/usearch.h:271	yes		no	default
+usearch	usearch_contains	_Bool (usearch_index_t, usearch_key_t, usearch_error_t *)	src/usearch/c/usearch.h:368	yes		no	default
+usearch	usearch_count	size_t (usearch_index_t, usearch_key_t, usearch_error_t *)	src/usearch/c/usearch.h:377	yes		no	default
+usearch	usearch_dimensions	size_t (usearch_index_t, usearch_error_t *)	src/usearch/c/usearch.h:264	yes		no	default
+usearch	usearch_distance	usearch_distance_t (const void *, const void *, usearch_scalar_kind_t, size_t, usearch_metric_kind_t, usearch_error_t *)	src/usearch/c/usearch.h:460	yes		no	default
+usearch	usearch_exact_search	void (const void *, size_t, size_t, const void *, size_t, size_t, usearch_scalar_kind_t, size_t, usearch_metric_kind_t, size_t, size_t, usearch_key_t *, size_t, usearch_distance_t *, size_t, usearch_error_t *)	src/usearch/c/usearch.h:486	yes		no	default
+usearch	usearch_expansion_add	size_t (usearch_index_t, usearch_error_t *)	src/usearch/c/usearch.h:287	yes		no	default
+usearch	usearch_expansion_search	size_t (usearch_index_t, usearch_error_t *)	src/usearch/c/usearch.h:295	yes		no	default
+usearch	usearch_filtered_search	size_t (usearch_index_t, const void *, usearch_scalar_kind_t, size_t, usearch_filtered_search_callback_t, void *, usearch_key_t *, usearch_distance_t *, usearch_error_t *)	src/usearch/c/usearch.h:410	yes		no	default
+usearch	usearch_free	void (usearch_index_t, usearch_error_t *)	src/usearch/c/usearch.h:150	yes	src/java/datalevin/cpp/VecIdx.java	no	default
+usearch	usearch_get	size_t (usearch_index_t, usearch_key_t, size_t, void *, usearch_scalar_kind_t, usearch_error_t *)	src/usearch/c/usearch.h:426	yes	src/java/datalevin/cpp/VecIdx.java	no	default
+usearch	usearch_hardware_acceleration	const char *(usearch_index_t, usearch_error_t *)	src/usearch/c/usearch.h:166	yes	src/java/datalevin/cpp/VecIdx.java	no	default
+usearch	usearch_hardware_acceleration_available	const char *(void)	src/usearch/c/usearch.h:135	no		no	default
+usearch	usearch_hardware_acceleration_compiled	const char *(void)	src/usearch/c/usearch.h:129	no		no	default
+usearch	usearch_init	usearch_index_t (usearch_init_options_t *, usearch_error_t *)	src/usearch/c/usearch.h:143	yes	src/java/datalevin/cpp/VecIdx.java	no	default
+usearch	usearch_load	void (usearch_index_t, const char *, usearch_error_t *)	src/usearch/c/usearch.h:189	yes	src/java/datalevin/cpp/VecIdx.java	no	default
+usearch	usearch_load_buffer	void (usearch_index_t, const void *, size_t, usearch_error_t *)	src/usearch/c/usearch.h:223	yes	src/java/datalevin/cpp/VecIdx.java	no	default
+usearch	usearch_memory_usage	size_t (usearch_index_t, usearch_error_t *)	src/usearch/c/usearch.h:158	yes	src/java/datalevin/cpp/VecIdx.java	no	default
+usearch	usearch_metadata	void (const char *, usearch_init_options_t *, usearch_error_t *)	src/usearch/c/usearch.h:205	yes		no	default
+usearch	usearch_metadata_buffer	void (const void *, size_t, usearch_init_options_t *, usearch_error_t *)	src/usearch/c/usearch.h:242	yes		no	default
+usearch	usearch_remove	size_t (usearch_index_t, usearch_key_t, usearch_error_t *)	src/usearch/c/usearch.h:437	yes	src/java/datalevin/cpp/VecIdx.java	no	default
+usearch	usearch_rename	size_t (usearch_index_t, usearch_key_t, usearch_key_t, usearch_error_t *)	src/usearch/c/usearch.h:447	yes		no	default
+usearch	usearch_reserve	void (usearch_index_t, size_t, usearch_error_t *)	src/usearch/c/usearch.h:279	yes	src/java/datalevin/cpp/VecIdx.java	no	default
+usearch	usearch_save	void (usearch_index_t, const char *, usearch_error_t *)	src/usearch/c/usearch.h:181	yes	src/java/datalevin/cpp/VecIdx.java	no	default
+usearch	usearch_save_buffer	void (usearch_index_t, void *, size_t, usearch_error_t *)	src/usearch/c/usearch.h:214	yes	src/java/datalevin/cpp/VecIdx.java	no	default
+usearch	usearch_search	size_t (usearch_index_t, const void *, usearch_scalar_kind_t, size_t, usearch_key_t *, usearch_distance_t *, usearch_error_t *)	src/usearch/c/usearch.h:390	yes	src/java/datalevin/cpp/VecIdx.java	no	default
+usearch	usearch_serialized_length	size_t (usearch_index_t, usearch_error_t *)	src/usearch/c/usearch.h:173	yes	src/java/datalevin/cpp/VecIdx.java	no	default
+usearch	usearch_size	size_t (usearch_index_t, usearch_error_t *)	src/usearch/c/usearch.h:250	yes	src/java/datalevin/cpp/VecIdx.java	no	default
+usearch	usearch_version	const char *(void)	src/usearch/c/usearch.h:123	yes		no	default
+usearch	usearch_view	void (usearch_index_t, const char *, usearch_error_t *)	src/usearch/c/usearch.h:197	yes		no	default
+usearch	usearch_view_buffer	void (usearch_index_t, const void *, size_t, usearch_error_t *)	src/usearch/c/usearch.h:233	yes		no	default

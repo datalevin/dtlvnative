@@ -1,0 +1,193 @@
+{
+  "schema_version": 1,
+  "audit_date": "2026-09-06",
+  "description": "Source and host ABI snapshot for Phase 0; not a binary release manifest or a completed Rust build.",
+  "dtlvnative_revision": "6d461a4eeee55147fb73e662da25d45507cdd0bf",
+  "datalevin_revision": "eed6e297a5ac8cc5d81217b68f6b6844dffb5051",
+  "source_state": "Inspected working trees; SHA-256 values below identify the files used, including local patches.",
+  "native_sources": [
+    {
+      "name": "dlmdb",
+      "path": "src/lmdb",
+      "revision": "310e049d6e975720b1e000a65aee53d68cc0c8bb",
+      "header_version": "1.1.0"
+    },
+    {
+      "name": "usearch",
+      "path": "src/usearch",
+      "revision": "0ef97e13e9cad0fc91db607973474f8952be75b6",
+      "version": "2.26.1",
+      "patch": "patches/usearch-gcc-no-native.patch"
+    },
+    {
+      "name": "llama.cpp",
+      "path": "src/llama.cpp",
+      "revision": "d7bd3bfcad3e29c7e49fd26f38c79ee3e9a3fd6b",
+      "patch": "patches/llama-mtmd-build.patch"
+    },
+    {
+      "name": "numkong",
+      "path": "src/usearch/numkong",
+      "revision": "48cbd21db85c013f0faebdbbe07b0feed1dd9e7c",
+      "version": "7.6.0"
+    },
+    {
+      "name": "stringzilla",
+      "path": "src/usearch/stringzilla",
+      "revision": "30d3e2129654d8269b3f66726414f9694c834e25",
+      "version": "3.10.10"
+    }
+  ],
+  "patch_sha256": {
+    "patches/usearch-gcc-no-native.patch": "80e4f3a57422e78adc1dda881f78b19af769904655126c76e93487b7c99600a2",
+    "patches/llama-mtmd-build.patch": "9fd4fb237ee25fcb459c1c62c499f5285e4e292657e99ca52b808fbed9fb1a97"
+  },
+  "source_sha256": {
+    "src/lmdb/libraries/liblmdb/dlmdb.h": "9cca57a2ce0c70f2ef62285ff7f0aad18f31f28f521f206f0f4ea3566ff4a340",
+    "src/usearch/c/usearch.h": "6b5a28b92d2eeb9dbb9dc63933f89606624301bfc8e81c6037f4f2eebcfe1027",
+    "src/dtlv.h": "0a84de49e2a03351f4938016953125ac3ccffef28de14a31c0e346489cd10c5d",
+    "src/dtlv.c": "dbcccc0740f40358676cfebc1a7a965451e0604b57ed352aed94b6450b383de8",
+    "src/lmdb/libraries/liblmdb/mdb.c": "52134656dedbe4fac6d6f14c1e740d3110997ef0176842deb763eb5d50b3ab6d",
+    "src/lmdb/libraries/liblmdb/midl.c": "42a71923ad80944fa7b0119277b9c47a6bf16a13e48ef2c2a964321451dd8fe2",
+    "src/lmdb/libraries/liblmdb/midl.h": "6ed4674054b349bc4b73e31d04c35eeb7a00312f33f445dbbc5e541fcdaaa9c3",
+    "src/java/datalevin/dtlvnative/DTLV.java": "ac8f4fef385b9928de7f57bb3d234d05f05abbcc1ceb77ede58ee0b7a6f59029",
+    "src/java/datalevin/dtlvnative/DTLVConfig.java": "4322ed10e2613335af2d4c09bdbcb82b6793b8756cbb7139af8c624d98974791",
+    "src/Makefile": "ee3dde2b142151d550dc745117b9c225bbd4f83d0a84e2f8cccb2488879630be",
+    "src/CMakeLists.txt": "35aa25d38e992e3a483d1741522476def4d255e94e77b093542358604dcb4aab",
+    "src/usearch/CMakeLists.txt": "d64c333954662d379dea77943dbdb1de73809a9ae582562530734b8b3bb6943a",
+    "src/usearch/Cargo.toml": "07f19d30af7d428df3c822b1f29f8fee85f2ade9201f13bd03a6da9d596d4a47",
+    "src/usearch/build.rs": "92753d20d50bf982c3ebf111db88c5c92e5d2d7c4cad6f19e33f65b58d5c4cb6",
+    "src/usearch/rust/lib.rs": "7d5eafd002c9ce39ac3548b6aefdb060df8df166d9335360bf92ea721db3c6bb",
+    "src/usearch/rust/lib.cpp": "311b589e95754046f9072230a2ea4a1f5f437f7cb3cdb0b8309b547305d3905b",
+    "src/usearch/c/lib.cpp": "2f5478c0c315bcd583dd1d49ae43b86d2d1e7c127eeada717055b512a10174f7",
+    "script/build": "c8a78838b2ae042810e4574eee02bc90e3b9a947e0fbe25de997467ed6d46d33",
+    "script/build-macos": "fc833d87990bf19b34b4f1863c8ec163638f6afdb803ccd010d4983695e6c8fb",
+    "script/build-freebsd": "1f41ffa0bd5d2253ea8155378d5fd9603027116e9be35f9697adbc5cdec13fcf",
+    "script/build.bat": "ab8a669a63a145b9c6fc61ff9c23e108ff0f983fecc8d47d95f4b06f68b02286"
+  },
+  "datalevin_caller_sha256": {
+    "src/datalevin/binding/cpp.clj": "7ca3f23e42ca58ec3dfa5cfc8e02a26a8f56ca091051e84a3c25d7525ac1ab89",
+    "src/java/datalevin/cpp/Cursor.java": "f41fed8f85accead3b9f78b15827cfd2d570bece71b63978bba502a856a91739",
+    "src/java/datalevin/cpp/Dbi.java": "2cb76566b835ee113226f9add47c1c4b76f702cc445f403e059a6bb95dcb4aa8",
+    "src/java/datalevin/cpp/Env.java": "4d9f6eb7a3cbda432e5ed04acf3d1ec1e08e5e4d92d1fae9c2e56416ecc734cf",
+    "src/java/datalevin/cpp/Info.java": "0a90543e6fdec4496fbeb4bba05d7017978471e02142f1f601307e8d99647918",
+    "src/java/datalevin/cpp/Stat.java": "c9526fd6022ad7de63fba1bb346bf93520f14bc7a37dcaca163dd8df7d9dcad3",
+    "src/java/datalevin/cpp/Txn.java": "63fed60be596be5879356d1498a499d71258c7e498b49c80bda07043db61cdfa",
+    "src/java/datalevin/cpp/Util.java": "147a77bc5a4aa1f9d40eaada5dbddb329822d6a896ad35fcd3e16689038d5269",
+    "src/java/datalevin/cpp/VecIdx.java": "d4f1c880b50fcfbbfca36a1a4324229f0f667bc7866bd8f31ddc4136c90cb47a",
+    "src/java/datalevin/ha/LMDBLogStorage.java": "767316dc94f6bbbcec02609a6391c733064712c7ae995adeec43b8f43f96b5f7",
+    "src/java/datalevin/llm/LlamaEmbedder.java": "cc50a646a214810de070dd6359b6ecee61d9aedbce7c214b61e07e839dada89e",
+    "src/java/datalevin/llm/LlamaGenerator.java": "2ea55671fbc2c8fe9bc4c30c92e5d24540c518cd8508e9d92c83cd287cf89ed8"
+  },
+  "api_counts": {
+    "default_c_functions": 150,
+    "conditional_c_functions": 2,
+    "javacpp_functions": 142,
+    "datalevin_direct_functions": 88
+  },
+  "conditional_functions": [
+    "mdb_profile_reset",
+    "mdb_profile_snapshot"
+  ],
+  "local_toolchain": {
+    "c_compiler": "Apple clang 21.0.0 (clang-2100.1.1.101)",
+    "c_target": "arm64-apple-darwin25.6.0",
+    "rustc": "1.98.1 (48a229cea 2026-09-01)",
+    "cargo": "1.98.1 (797e8a9bc 2026-08-05)",
+    "cmake": "4.4.3",
+    "libclang_observed": "/opt/homebrew/opt/llvm/lib/libclang.dylib"
+  },
+  "usearch_configuration": {
+    "cmake_default": {
+      "USEARCH_USE_NUMKONG": false,
+      "USEARCH_USE_OPENMP": false
+    },
+    "existing_local_cache": {
+      "path": "src/usearch/build_release/CMakeCache.txt",
+      "USEARCH_USE_NUMKONG": false,
+      "USEARCH_USE_OPENMP": true,
+      "USEARCH_USE_SIMSIMD": "UNINITIALIZED=1",
+      "USEARCH_USE_FP16LIB": "UNINITIALIZED=1"
+    },
+    "rust_default_features": [
+      "numkong"
+    ],
+    "rust_numkong_dependency": ">=7.5.0, <8 (registry dependency, not the git submodule)",
+    "rust_openmp": "Optional; -fopenmp and -lomp on non-Windows, /openmp on Windows",
+    "status": "Build parity is not established; existing scripts use retired SimSIMD/FP16 options."
+  },
+  "abi": {
+    "scope": "Host C11 defaults; no MDB_VL32, no Windows defines; sizes and alignments in bytes.",
+    "types": {
+      "size_t": {
+        "size": 8,
+        "alignment": 8
+      },
+      "mdb_size_t": {
+        "size": 8,
+        "alignment": 8
+      },
+      "mdb_mode_t": {
+        "size": 2,
+        "alignment": 2
+      },
+      "mdb_filehandle_t": {
+        "size": 4,
+        "alignment": 4
+      },
+      "MDB_dbi": {
+        "size": 4,
+        "alignment": 4
+      },
+      "MDB_cursor_op": {
+        "size": 4,
+        "alignment": 4
+      },
+      "MDB_val": {
+        "size": 16,
+        "alignment": 8
+      },
+      "MDB_stat": {
+        "size": 40,
+        "alignment": 8
+      },
+      "MDB_envinfo": {
+        "size": 40,
+        "alignment": 8
+      },
+      "usearch_key_t": {
+        "size": 8,
+        "alignment": 8
+      },
+      "usearch_distance_t": {
+        "size": 4,
+        "alignment": 4
+      },
+      "usearch_metric_kind_t": {
+        "size": 4,
+        "alignment": 4
+      },
+      "usearch_scalar_kind_t": {
+        "size": 4,
+        "alignment": 4
+      },
+      "usearch_init_options_t": {
+        "size": 64,
+        "alignment": 8
+      }
+    },
+    "offsets": {
+      "MDB_val.mv_size": 0,
+      "MDB_val.mv_data": 8,
+      "usearch_init_options_t.metric_kind": 0,
+      "usearch_init_options_t.metric": 8,
+      "usearch_init_options_t.quantization": 16,
+      "usearch_init_options_t.dimensions": 24,
+      "usearch_init_options_t.multi": 56
+    },
+    "constants": {
+      "DTLV_TRUE": 255,
+      "DTLV_FALSE": 256
+    }
+  }
+}
