@@ -30,6 +30,11 @@ If bindgen cannot find libclang, set `LIBCLANG_PATH` to its library directory.
 For example, with Homebrew LLVM: `export LIBCLANG_PATH="$(brew --prefix llvm)/lib"`.
 On Windows, use Visual Studio 2022's x64 developer environment with Git Bash,
 and set `LIBCLANG_PATH` to the LLVM directory containing `libclang.dll`.
+The test script locates Microsoft's `link.exe` beside `cl.exe`, puts that directory
+first on `PATH`, and sets Cargo's
+[`CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_LINKER`](https://doc.rust-lang.org/cargo/reference/config.html#targettriplelinker)
+to its absolute path. This prevents Git Bash's Unix `link.exe` from intercepting
+Rust linkage, including dependency build scripts.
 CI initializes that environment before running Rust checks. Its Windows runner
 provides [LLVM and Visual Studio 2022](https://github.com/actions/runner-images/blob/main/images/windows/Windows2022-Readme.md).
 Storage builds need neither OpenMP nor the USearch/llama submodules. To build
@@ -120,7 +125,9 @@ the sandbox returned `EPERM`. Tests passed with normal host permissions.
 The [Rust checks in build.yml](../../.github/workflows/build.yml) run in the existing
 build job on every matrix platform: macOS ARM64, Linux x86-64, Linux ARM64,
 and Windows x86-64. These four platforms are the required validation scope from
-Phase 1 onward. Remote CI has not run yet; Linux and Windows execution remain
-pending. FreeBSD and cross compilation remain outside this initial matrix.
+Phase 1 onward. Windows CI initially failed because Git Bash selected its Unix
+`link.exe`; the test runner now selects MSVC explicitly. A successful Windows
+rerun and Linux results remain pending. FreeBSD and cross compilation remain
+outside this initial matrix.
 Packaged platform binaries were not regenerated. Detailed local commands are
 in [phase-1.md](phase-1.md).

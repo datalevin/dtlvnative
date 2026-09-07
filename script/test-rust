@@ -5,6 +5,26 @@ ROOT_DIR=$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)
 cd "$ROOT_DIR"
 MANIFEST=src/rust/Cargo.toml
 
+case "$(uname -s)" in
+  MINGW*|MSYS*|CYGWIN*)
+    # Git Bash puts its Unix link.exe ahead of MSVC. Find Microsoft's linker
+    # beside cl.exe, before Cargo compiles even its dependency build scripts.
+    if ! MSVC_COMPILER=$(command -v cl.exe); then
+      echo "Run this script from Visual Studio's x64 developer environment." >&2
+      exit 1
+    fi
+    MSVC_BIN=$(dirname "$MSVC_COMPILER")
+    if [ ! -f "$MSVC_BIN/link.exe" ]; then
+      echo "Missing MSVC linker beside $MSVC_COMPILER" >&2
+      exit 1
+    fi
+    MSVC_LINKER=$(cygpath -m "$MSVC_BIN/link.exe")
+    export PATH="$MSVC_BIN:$PATH"
+    export CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_LINKER="$MSVC_LINKER"
+    printf 'Using MSVC linker: %s\n' "$MSVC_LINKER"
+    ;;
+esac
+
 cargo fmt --manifest-path "$MANIFEST" --all -- --check
 cargo clippy --manifest-path "$MANIFEST" --locked --workspace --all-targets --all-features -- -D warnings
 cargo test --manifest-path "$MANIFEST" --locked --workspace
