@@ -1,6 +1,13 @@
 cmake_minimum_required(VERSION 3.14...3.28)
 project(dtlv VERSION 0.11.3 LANGUAGES C)
 
+option(DTLV_USE_USEARCH "Include the USearch C library" ON)
+option(DTLV_USE_LLAMA "Include the llama.cpp runtime" ON)
+option(DTLV_BUILD_TESTS "Build dependency tests" ON)
+option(DTLV_BUILD_RUST_FIXTURE "Build the C/Rust storage compatibility fixture" OFF)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+find_package(Threads REQUIRED)
+
 # Options for compilation
 option(CLOSE_WARNING "Close warnings, default off" OFF)
 option(BUILD_TEST "Build test program, default off" OFF)
@@ -16,10 +23,15 @@ add_library(dlmdb STATIC
     lmdb/libraries/liblmdb/midl.c
 )
 
-target_include_directories(dlmdb PRIVATE
-    ${PROJECT_SOURCE_DIR}/win32
+target_include_directories(dlmdb PUBLIC
     ${PROJECT_SOURCE_DIR}/lmdb/libraries/liblmdb
 )
+
+target_link_libraries(dlmdb PUBLIC Threads::Threads)
+if(WIN32)
+    target_include_directories(dlmdb PRIVATE ${PROJECT_SOURCE_DIR}/win32)
+    target_link_libraries(dlmdb PUBLIC Advapi32)
+endif()
 
 set_target_properties(dlmdb PROPERTIES
     OUTPUT_NAME dlmdb
@@ -37,15 +49,21 @@ add_library(dtlv STATIC
     dtlv.c
 )
 
-target_include_directories(dtlv PRIVATE
+target_include_directories(dtlv PUBLIC
     ${PROJECT_SOURCE_DIR}
-    ${PROJECT_SOURCE_DIR}/llama.cpp/include
-    ${PROJECT_SOURCE_DIR}/llama.cpp/ggml/include
-    ${PROJECT_SOURCE_DIR}/llama.cpp/tools/mtmd
 )
 
 # Link the DLMDB static to DTLV
-target_link_libraries(dtlv PRIVATE dlmdb mtmd)
+target_link_libraries(dtlv PUBLIC dlmdb)
+
+if(DTLV_BUILD_RUST_FIXTURE)
+    add_executable(storage_fixture rust/tests/storage_fixture.c)
+    target_link_libraries(storage_fixture PRIVATE dtlv)
+    set_target_properties(storage_fixture PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
+        RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}/bin"
+    )
+endif()
 
 set_target_properties(dtlv PROPERTIES
     OUTPUT_NAME dtlv
@@ -58,109 +76,124 @@ install(TARGETS dtlv
     ARCHIVE DESTINATION ${CMAKE_INSTALL_PREFIX}
 )
 
-set(USEARCH_USE_FP16LIB        ON CACHE BOOL "" FORCE)
-set(USEARCH_USE_OPENMP         ON CACHE BOOL "" FORCE)
-set(USEARCH_USE_SIMSIMD        ON CACHE BOOL "" FORCE)
-set(USEARCH_BUILD_STATIC_C     ON CACHE BOOL "" FORCE)
-set(USEARCH_BUILD_SHARED_C     OFF CACHE BOOL "" FORCE)
-set(BUILD_SHARED_LIBS          OFF CACHE BOOL "Build statically" FORCE)
-set(USEARCH_BUILD_LIB_C        ON CACHE BOOL "" FORCE)
-set(USEARCH_BUILD_TEST_C       ON CACHE BOOL "" FORCE)
-set(USEARCH_BUILD_TEST_CPP     ON CACHE BOOL "" FORCE)
+if(DTLV_USE_USEARCH)
+    set(USEARCH_USE_FP16LIB        ON CACHE BOOL "" FORCE)
+    set(USEARCH_USE_OPENMP         ON CACHE BOOL "" FORCE)
+    set(USEARCH_USE_SIMSIMD        ON CACHE BOOL "" FORCE)
+    set(USEARCH_BUILD_STATIC_C     ON CACHE BOOL "" FORCE)
+    set(USEARCH_BUILD_SHARED_C     OFF CACHE BOOL "" FORCE)
+    set(BUILD_SHARED_LIBS          OFF CACHE BOOL "Build statically" FORCE)
+    set(USEARCH_BUILD_LIB_C        ON CACHE BOOL "" FORCE)
+    set(USEARCH_BUILD_TEST_C       ${DTLV_BUILD_TESTS} CACHE BOOL "" FORCE)
+    set(USEARCH_BUILD_TEST_CPP     ${DTLV_BUILD_TESTS} CACHE BOOL "" FORCE)
 
-if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|AMD64|amd64)$")
-    # Compile a broader x86 kernel set and let SimSIMD select at runtime.
-    # These flags control which per-ISA kernels are built, not which one runs.
-    if(MSVC)
-        set(SIMSIMD_TARGET_HASWELL 1 CACHE STRING "" FORCE)
-        set(SIMSIMD_TARGET_SKYLAKE 1 CACHE STRING "" FORCE)
-        set(SIMSIMD_TARGET_ICE 1 CACHE STRING "" FORCE)
-        set(SIMSIMD_TARGET_GENOA 0 CACHE STRING "" FORCE)
-        set(SIMSIMD_TARGET_SAPPHIRE 0 CACHE STRING "" FORCE)
-        set(SIMSIMD_TARGET_TURIN 0 CACHE STRING "" FORCE)
-        set(SIMSIMD_TARGET_SIERRA 0 CACHE STRING "" FORCE)
-    elseif(APPLE)
-        set(SIMSIMD_TARGET_HASWELL 1 CACHE STRING "" FORCE)
-        set(SIMSIMD_TARGET_SKYLAKE 0 CACHE STRING "" FORCE)
-        set(SIMSIMD_TARGET_ICE 0 CACHE STRING "" FORCE)
-        set(SIMSIMD_TARGET_GENOA 0 CACHE STRING "" FORCE)
-        set(SIMSIMD_TARGET_SAPPHIRE 0 CACHE STRING "" FORCE)
-        set(SIMSIMD_TARGET_TURIN 0 CACHE STRING "" FORCE)
-        set(SIMSIMD_TARGET_SIERRA 0 CACHE STRING "" FORCE)
-    else()
-        set(SIMSIMD_TARGET_HASWELL 1 CACHE STRING "" FORCE)
-        set(SIMSIMD_TARGET_SKYLAKE 1 CACHE STRING "" FORCE)
-        set(SIMSIMD_TARGET_ICE 1 CACHE STRING "" FORCE)
-        set(SIMSIMD_TARGET_GENOA 1 CACHE STRING "" FORCE)
-        set(SIMSIMD_TARGET_SAPPHIRE 1 CACHE STRING "" FORCE)
-        set(SIMSIMD_TARGET_TURIN 1 CACHE STRING "" FORCE)
-        set(SIMSIMD_TARGET_SIERRA 0 CACHE STRING "" FORCE)
+    if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|AMD64|amd64)$")
+        # Compile a broader x86 kernel set and let SimSIMD select at runtime.
+        # These flags control which per-ISA kernels are built, not which one runs.
+        if(MSVC)
+            set(SIMSIMD_TARGET_HASWELL 1 CACHE STRING "" FORCE)
+            set(SIMSIMD_TARGET_SKYLAKE 1 CACHE STRING "" FORCE)
+            set(SIMSIMD_TARGET_ICE 1 CACHE STRING "" FORCE)
+            set(SIMSIMD_TARGET_GENOA 0 CACHE STRING "" FORCE)
+            set(SIMSIMD_TARGET_SAPPHIRE 0 CACHE STRING "" FORCE)
+            set(SIMSIMD_TARGET_TURIN 0 CACHE STRING "" FORCE)
+            set(SIMSIMD_TARGET_SIERRA 0 CACHE STRING "" FORCE)
+        elseif(APPLE)
+            set(SIMSIMD_TARGET_HASWELL 1 CACHE STRING "" FORCE)
+            set(SIMSIMD_TARGET_SKYLAKE 0 CACHE STRING "" FORCE)
+            set(SIMSIMD_TARGET_ICE 0 CACHE STRING "" FORCE)
+            set(SIMSIMD_TARGET_GENOA 0 CACHE STRING "" FORCE)
+            set(SIMSIMD_TARGET_SAPPHIRE 0 CACHE STRING "" FORCE)
+            set(SIMSIMD_TARGET_TURIN 0 CACHE STRING "" FORCE)
+            set(SIMSIMD_TARGET_SIERRA 0 CACHE STRING "" FORCE)
+        else()
+            set(SIMSIMD_TARGET_HASWELL 1 CACHE STRING "" FORCE)
+            set(SIMSIMD_TARGET_SKYLAKE 1 CACHE STRING "" FORCE)
+            set(SIMSIMD_TARGET_ICE 1 CACHE STRING "" FORCE)
+            set(SIMSIMD_TARGET_GENOA 1 CACHE STRING "" FORCE)
+            set(SIMSIMD_TARGET_SAPPHIRE 1 CACHE STRING "" FORCE)
+            set(SIMSIMD_TARGET_TURIN 1 CACHE STRING "" FORCE)
+            set(SIMSIMD_TARGET_SIERRA 0 CACHE STRING "" FORCE)
+        endif()
     endif()
+
+    add_subdirectory(${PROJECT_SOURCE_DIR}/usearch usearch_static_c_build)
+
+    if(WIN32)
+        foreach(target usearch_c usearch_static_c test_c test_cpp)
+            if(TARGET ${target})
+                # USearch compares mmap return values against MAP_FAILED even on Windows.
+                # Provide the POSIX sentinel without modifying the submodule sources.
+                target_compile_definitions(${target} PRIVATE "MAP_FAILED=((void*)-1)")
+            endif()
+        endforeach()
+    endif()
+
+    set_target_properties(usearch_static_c PROPERTIES
+        OUTPUT_NAME usearch_static_c
+        ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_INSTALL_PREFIX}
+        ARCHIVE_OUTPUT_DIRECTORY_RELEASE ${CMAKE_INSTALL_PREFIX}
+    )
+
+    if(MSVC)
+        target_link_options(dtlv INTERFACE "/WHOLEARCHIVE:$<TARGET_FILE:usearch_static_c>")
+    endif()
+    target_link_libraries(dtlv PUBLIC usearch_static_c)
+
+    install(TARGETS usearch_static_c
+        ARCHIVE DESTINATION ${CMAKE_INSTALL_PREFIX}
+    )
+
 endif()
 
-add_subdirectory(${PROJECT_SOURCE_DIR}/usearch usearch_static_c_build)
+if(DTLV_USE_LLAMA)
+    set(BUILD_SHARED_LIBS          OFF CACHE BOOL "Build statically" FORCE)
+    set(LLAMA_BUILD_COMMON         OFF CACHE BOOL "" FORCE)
+    set(LLAMA_BUILD_TESTS          OFF CACHE BOOL "" FORCE)
+    set(LLAMA_BUILD_TOOLS          OFF CACHE BOOL "" FORCE)
+    set(LLAMA_BUILD_APP            OFF CACHE BOOL "" FORCE)
+    set(LLAMA_BUILD_MTMD           ON  CACHE BOOL "" FORCE)
+    set(LLAMA_BUILD_EXAMPLES       OFF CACHE BOOL "" FORCE)
+    set(LLAMA_BUILD_SERVER         OFF CACHE BOOL "" FORCE)
+    set(LLAMA_OPENSSL              OFF CACHE BOOL "" FORCE)
+    set(GGML_CPU                   ON  CACHE BOOL "" FORCE)
+    set(GGML_OPENMP                ON  CACHE BOOL "" FORCE)
+    set(GGML_NATIVE                OFF CACHE BOOL "" FORCE)
+    set(GGML_LLAMAFILE             OFF CACHE BOOL "" FORCE)
+    set(GGML_CPU_REPACK            OFF CACHE BOOL "" FORCE)
+    set(GGML_BACKEND_DL            OFF CACHE BOOL "" FORCE)
+    set(GGML_ACCELERATE            OFF CACHE BOOL "" FORCE)
+    set(GGML_BLAS                  OFF CACHE BOOL "" FORCE)
+    set(GGML_CUDA                  OFF CACHE BOOL "" FORCE)
+    set(GGML_HIP                   OFF CACHE BOOL "" FORCE)
+    set(GGML_METAL                 OFF CACHE BOOL "" FORCE)
+    set(GGML_MUSA                  OFF CACHE BOOL "" FORCE)
+    set(GGML_OPENCL                OFF CACHE BOOL "" FORCE)
+    set(GGML_RPC                   OFF CACHE BOOL "" FORCE)
+    set(GGML_SYCL                  OFF CACHE BOOL "" FORCE)
+    set(GGML_VULKAN                OFF CACHE BOOL "" FORCE)
+    set(GGML_WEBGPU                OFF CACHE BOOL "" FORCE)
 
-set(LLAMA_BUILD_COMMON         OFF CACHE BOOL "" FORCE)
-set(LLAMA_BUILD_TESTS          OFF CACHE BOOL "" FORCE)
-set(LLAMA_BUILD_TOOLS          OFF CACHE BOOL "" FORCE)
-set(LLAMA_BUILD_APP            OFF CACHE BOOL "" FORCE)
-set(LLAMA_BUILD_MTMD           ON  CACHE BOOL "" FORCE)
-set(LLAMA_BUILD_EXAMPLES       OFF CACHE BOOL "" FORCE)
-set(LLAMA_BUILD_SERVER         OFF CACHE BOOL "" FORCE)
-set(LLAMA_OPENSSL              OFF CACHE BOOL "" FORCE)
-set(GGML_CPU                   ON  CACHE BOOL "" FORCE)
-set(GGML_OPENMP                ON  CACHE BOOL "" FORCE)
-set(GGML_NATIVE                OFF CACHE BOOL "" FORCE)
-set(GGML_LLAMAFILE             OFF CACHE BOOL "" FORCE)
-set(GGML_CPU_REPACK            OFF CACHE BOOL "" FORCE)
-set(GGML_BACKEND_DL            OFF CACHE BOOL "" FORCE)
-set(GGML_ACCELERATE            OFF CACHE BOOL "" FORCE)
-set(GGML_BLAS                  OFF CACHE BOOL "" FORCE)
-set(GGML_CUDA                  OFF CACHE BOOL "" FORCE)
-set(GGML_HIP                   OFF CACHE BOOL "" FORCE)
-set(GGML_METAL                 OFF CACHE BOOL "" FORCE)
-set(GGML_MUSA                  OFF CACHE BOOL "" FORCE)
-set(GGML_OPENCL                OFF CACHE BOOL "" FORCE)
-set(GGML_RPC                   OFF CACHE BOOL "" FORCE)
-set(GGML_SYCL                  OFF CACHE BOOL "" FORCE)
-set(GGML_VULKAN                OFF CACHE BOOL "" FORCE)
-set(GGML_WEBGPU                OFF CACHE BOOL "" FORCE)
-set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+    add_subdirectory(${PROJECT_SOURCE_DIR}/llama.cpp llama_static_build)
 
-add_subdirectory(${PROJECT_SOURCE_DIR}/llama.cpp llama_static_build)
-
-if(WIN32)
-    foreach(target usearch_c usearch_static_c test_c test_cpp)
+    foreach(target llama ggml ggml-base ggml-cpu mtmd vendor-hash)
         if(TARGET ${target})
-            # USearch compares mmap return values against MAP_FAILED even on Windows.
-            # Provide the POSIX sentinel without modifying the submodule sources.
-            target_compile_definitions(${target} PRIVATE "MAP_FAILED=((void*)-1)")
+            set_target_properties(${target} PROPERTIES
+                ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_INSTALL_PREFIX}
+                ARCHIVE_OUTPUT_DIRECTORY_RELEASE ${CMAKE_INSTALL_PREFIX}
+            )
+            install(TARGETS ${target}
+                ARCHIVE DESTINATION ${CMAKE_INSTALL_PREFIX}
+                PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_PREFIX}
+            )
         endif()
     endforeach()
+
+    target_sources(dtlv PRIVATE dtlv_llama.c)
+    target_include_directories(dtlv PRIVATE
+        ${PROJECT_SOURCE_DIR}/llama.cpp/include
+        ${PROJECT_SOURCE_DIR}/llama.cpp/ggml/include
+        ${PROJECT_SOURCE_DIR}/llama.cpp/tools/mtmd
+    )
+    target_link_libraries(dtlv PUBLIC mtmd vendor-hash llama ggml ggml-base ggml-cpu)
 endif()
-
-set_target_properties(usearch_static_c PROPERTIES
-    OUTPUT_NAME usearch_static_c
-    ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_INSTALL_PREFIX}
-    ARCHIVE_OUTPUT_DIRECTORY_RELEASE ${CMAKE_INSTALL_PREFIX}
-)
-
-target_link_options(dtlv PRIVATE "/WHOLEARCHIVE:usearch_static_c")
-target_link_libraries(dtlv PRIVATE usearch_static_c mtmd vendor-hash llama ggml ggml-base ggml-cpu)
-
-install(TARGETS usearch_static_c
-    ARCHIVE DESTINATION ${CMAKE_INSTALL_PREFIX}
-)
-
-foreach(target llama ggml ggml-base ggml-cpu mtmd vendor-hash)
-    if(TARGET ${target})
-        set_target_properties(${target} PROPERTIES
-            ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_INSTALL_PREFIX}
-            ARCHIVE_OUTPUT_DIRECTORY_RELEASE ${CMAKE_INSTALL_PREFIX}
-        )
-        install(TARGETS ${target}
-            ARCHIVE DESTINATION ${CMAKE_INSTALL_PREFIX}
-            PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_PREFIX}
-        )
-    endif()
-endforeach()

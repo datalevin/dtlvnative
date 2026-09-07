@@ -19,3 +19,4 @@ pom.xml.asc
 *.so
 .project
 .settings/
+/src/rust/target/

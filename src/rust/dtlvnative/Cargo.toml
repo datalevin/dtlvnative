@@ -1,0 +1,32 @@
+[package]
+name = "dtlvnative"
+description = "Rust interfaces to Datalevin's native dependencies"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[features]
+default = ["dlmdb"]
+dlmdb = ["dtlvnative-sys/dlmdb"]
+
+[dependencies]
+dtlvnative-sys = { path = "../dtlvnative-sys", version = "0.1.0", default-features = false }
+
+[dev-dependencies]
+tempfile.workspace = true
+
+[[example]]
+name = "storage"
+required-features = ["dlmdb"]
+
+[[test]]
+name = "storage"
+required-features = ["dlmdb"]
+
+[[example]]
+name = "storage_fixture"
+required-features = ["dlmdb"]
+
+[lints]
+workspace = true

@@ -1,7 +1,7 @@
 name: Build
 
 on:
-  # push:
+  push:
   # pull_request:
   release:
     types:
@@ -65,122 +65,152 @@ jobs:
           Invoke-WebRequest -Uri "https://raw.githubusercontent.com/technomancy/leiningen/stable/bin/lein.bat" -OutFile "lein.bat"
           .\lein.bat self-install
 
-      # macOS ARM64 build
-      - name: Build macOS ARM64
+      - name: Install macOS build tools
         if: matrix.platform == 'macosx-arm64'
         run: |
-          mkdir -p src/java/datalevin/dtlvnative/macosx-arm64
-          mkdir -p macosx-arm64/resources/datalevin/dtlvnative/macosx-arm64
-
           brew install libomp llvm
+          echo "LIBCLANG_PATH=$(brew --prefix llvm)/lib" >> "$GITHUB_ENV"
 
-          script/build-macos
-          cp src/*.dylib macosx-arm64/resources/datalevin/dtlvnative/macosx-arm64/
+      - name: Install libclang on Linux
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libclang-dev
 
-          cd macosx-arm64
-          lein deps
-
-          cd ../src/java
-          java -jar ~/.m2/repository/org/bytedeco/javacpp/1.5.13/javacpp-1.5.13.jar datalevin/dtlvnative/DTLV.java
-
-          # Fix libjniDTLV.dylib to use @loader_path for libdtlv.dylib reference
-          cd datalevin/dtlvnative/macosx-arm64
-          install_name_tool -change libdtlv.dylib @loader_path/libdtlv.dylib libjniDTLV.dylib
-          codesign -f -s - libjniDTLV.dylib
-
-          cd ../../../../..
-          cp src/java/datalevin/dtlvnative/macosx-arm64/*.dylib macosx-arm64/resources/datalevin/dtlvnative/macosx-arm64/
-
-          cd macosx-arm64
-          lein run
-          if [ "${{ github.event_name }}" = "release" ]; then
-            lein deploy clojars
-          fi
-
-      # Linux x86_64 build
-      - name: Build Linux x86_64
-        if: matrix.platform == 'linux-x86_64'
-        run: |
-          export CC=/usr/bin/gcc-12
-          export CXX=/usr/bin/g++-12
-
-          sudo apt-get update
-          sudo apt-get install -y gcc-12 g++-12
-
-          mkdir -p linux-x86_64/resources/datalevin/dtlvnative/linux-x86_64
-          mkdir -p src/java/datalevin/dtlvnative/linux-x86_64
-
-          script/build
-          cp src/*.so linux-x86_64/resources/datalevin/dtlvnative/linux-x86_64
-
-          cd linux-x86_64
-          lein deps
-
-          cd ../src/java
-          java -jar ~/.m2/repository/org/bytedeco/javacpp/1.5.13/javacpp-1.5.13.jar datalevin/dtlvnative/DTLV.java
-
-          cd ../..
-          cp src/java/datalevin/dtlvnative/linux-x86_64/*.so linux-x86_64/resources/datalevin/dtlvnative/linux-x86_64/
-
-          cd linux-x86_64
-          lein run
-          if [ "${{ github.event_name }}" = "release" ]; then
-            lein deploy clojars
-          fi
-
-      # Linux ARM64 build
-      - name: Build Linux ARM64
-        if: matrix.platform == 'linux-arm64'
-        run: |
-          export CC=/usr/bin/gcc-12
-          export CXX=/usr/bin/g++-12
-
-          sudo apt-get update
-          sudo apt-get install -y gcc-12 g++-12 cmake
-
-          mkdir -p src/java/datalevin/dtlvnative/linux-arm64
-          mkdir -p linux-arm64/resources/datalevin/dtlvnative/linux-arm64
-
-          script/build
-          cp src/*.so linux-arm64/resources/datalevin/dtlvnative/linux-arm64/
-
-          cd linux-arm64
-          lein deps
-
-          cd ../src/java
-          java -jar ~/.m2/repository/org/bytedeco/javacpp/1.5.13/javacpp-1.5.13.jar datalevin/dtlvnative/DTLV.java
-
-          cd ../..
-          cp src/java/datalevin/dtlvnative/linux-arm64/*.so linux-arm64/resources/datalevin/dtlvnative/linux-arm64/
-
-          cd linux-arm64
-          lein run
-          if [ "${{ github.event_name }}" = "release" ]; then
-            lein deploy clojars
-          fi
-
-      # Windows x86_64 build
       - name: Setup Visual Studio shell
         if: runner.os == 'Windows'
         uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
 
-      - name: Build Windows x86_64
-        if: matrix.platform == 'windows-x86_64'
-        shell: cmd
+      - name: Locate libclang on Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
         run: |
-          mkdir windows-x86_64\resources\datalevin\dtlvnative\windows-x86_64
+          $clangDirectory = Split-Path (Get-Command clang.exe -ErrorAction Stop).Source
+          if (!(Test-Path (Join-Path $clangDirectory 'libclang.dll'))) {
+            throw "libclang.dll is missing from $clangDirectory"
+          }
+          "LIBCLANG_PATH=$clangDirectory" >> $env:GITHUB_ENV
 
-          cd windows-x86_64
-          if not exist project.clj exit /b 1
-          call ..\lein.bat deps
-          if errorlevel 1 exit /b %errorlevel%
+      - name: Install Rust tools
+        shell: bash
+        run: |
+          rustup toolchain install stable --profile minimal --component rustfmt --component clippy
+          rustup default stable
 
-          cd ..
-          call script\build.bat
-          if errorlevel 1 exit /b %errorlevel%
+      - name: Rust storage checks
+        shell: bash
+        run: script/test-rust
 
-          cd windows-x86_64
-          if not exist project.clj exit /b 1
-          call ..\lein.bat run
-          if errorlevel 1 exit /b %errorlevel%
-          if "%GITHUB_EVENT_NAME%"=="release" call ..\lein.bat deploy clojars
+      # macOS ARM64 build
+      # - name: Build macOS ARM64
+      #   if: matrix.platform == 'macosx-arm64'
+      #   run: |
+      #     mkdir -p src/java/datalevin/dtlvnative/macosx-arm64
+      #     mkdir -p macosx-arm64/resources/datalevin/dtlvnative/macosx-arm64
+
+      #     script/build-macos
+      #     cp src/*.dylib macosx-arm64/resources/datalevin/dtlvnative/macosx-arm64/
+
+      #     cd macosx-arm64
+      #     lein deps
+
+      #     cd ../src/java
+      #     java -jar ~/.m2/repository/org/bytedeco/javacpp/1.5.13/javacpp-1.5.13.jar datalevin/dtlvnative/DTLV.java
+
+      #     # Fix libjniDTLV.dylib to use @loader_path for libdtlv.dylib reference
+      #     cd datalevin/dtlvnative/macosx-arm64
+      #     install_name_tool -change libdtlv.dylib @loader_path/libdtlv.dylib libjniDTLV.dylib
+      #     codesign -f -s - libjniDTLV.dylib
+
+      #     cd ../../../../..
+      #     cp src/java/datalevin/dtlvnative/macosx-arm64/*.dylib macosx-arm64/resources/datalevin/dtlvnative/macosx-arm64/
+
+      #     cd macosx-arm64
+      #     lein run
+      #     if [ "${{ github.event_name }}" = "release" ]; then
+      #       lein deploy clojars
+      #     fi
+
+      # Linux x86_64 build
+      # - name: Build Linux x86_64
+      #   if: matrix.platform == 'linux-x86_64'
+      #   run: |
+      #     export CC=/usr/bin/gcc-12
+      #     export CXX=/usr/bin/g++-12
+
+      #     sudo apt-get update
+      #     sudo apt-get install -y gcc-12 g++-12
+
+      #     mkdir -p linux-x86_64/resources/datalevin/dtlvnative/linux-x86_64
+      #     mkdir -p src/java/datalevin/dtlvnative/linux-x86_64
+
+      #     script/build
+      #     cp src/*.so linux-x86_64/resources/datalevin/dtlvnative/linux-x86_64
+
+      #     cd linux-x86_64
+      #     lein deps
+
+      #     cd ../src/java
+      #     java -jar ~/.m2/repository/org/bytedeco/javacpp/1.5.13/javacpp-1.5.13.jar datalevin/dtlvnative/DTLV.java
+
+      #     cd ../..
+      #     cp src/java/datalevin/dtlvnative/linux-x86_64/*.so linux-x86_64/resources/datalevin/dtlvnative/linux-x86_64/
+
+      #     cd linux-x86_64
+      #     lein run
+      #     if [ "${{ github.event_name }}" = "release" ]; then
+      #       lein deploy clojars
+      #     fi
+
+      # Linux ARM64 build
+      # - name: Build Linux ARM64
+      #   if: matrix.platform == 'linux-arm64'
+      #   run: |
+      #     export CC=/usr/bin/gcc-12
+      #     export CXX=/usr/bin/g++-12
+
+      #     sudo apt-get update
+      #     sudo apt-get install -y gcc-12 g++-12 cmake
+
+      #     mkdir -p src/java/datalevin/dtlvnative/linux-arm64
+      #     mkdir -p linux-arm64/resources/datalevin/dtlvnative/linux-arm64
+
+      #     script/build
+      #     cp src/*.so linux-arm64/resources/datalevin/dtlvnative/linux-arm64/
+
+      #     cd linux-arm64
+      #     lein deps
+
+      #     cd ../src/java
+      #     java -jar ~/.m2/repository/org/bytedeco/javacpp/1.5.13/javacpp-1.5.13.jar datalevin/dtlvnative/DTLV.java
+
+      #     cd ../..
+      #     cp src/java/datalevin/dtlvnative/linux-arm64/*.so linux-arm64/resources/datalevin/dtlvnative/linux-arm64/
+
+      #     cd linux-arm64
+      #     lein run
+      #     if [ "${{ github.event_name }}" = "release" ]; then
+      #       lein deploy clojars
+      #     fi
+
+      # Windows x86_64 build
+      # - name: Build Windows x86_64
+      #   if: matrix.platform == 'windows-x86_64'
+      #   shell: cmd
+      #   run: |
+      #     mkdir windows-x86_64\resources\datalevin\dtlvnative\windows-x86_64
+
+      #     cd windows-x86_64
+      #     if not exist project.clj exit /b 1
+      #     call ..\lein.bat deps
+      #     if errorlevel 1 exit /b %errorlevel%
+
+      #     cd ..
+      #     call script\build.bat
+      #     if errorlevel 1 exit /b %errorlevel%
+
+      #     cd windows-x86_64
+      #     if not exist project.clj exit /b 1
+      #     call ..\lein.bat run
+      #     if errorlevel 1 exit /b %errorlevel%
+      #     if "%GITHUB_EVENT_NAME%"=="release" call ..\lein.bat deploy clojars

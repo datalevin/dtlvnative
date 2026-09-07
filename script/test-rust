@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR=$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)
+cd "$ROOT_DIR"
+MANIFEST=src/rust/Cargo.toml
+
+cargo fmt --manifest-path "$MANIFEST" --all -- --check
+cargo clippy --manifest-path "$MANIFEST" --locked --workspace --all-targets --all-features -- -D warnings
+cargo test --manifest-path "$MANIFEST" --locked --workspace
+cargo check --manifest-path "$MANIFEST" --locked --workspace --all-targets --no-default-features
+cargo run --manifest-path "$MANIFEST" --locked -p dtlvnative --example storage
+
+# Compile a separate C executable against the same source revision, then close
+# and reopen persisted databases in both directions. No model/vector build needed.
+FIXTURE_DIR=$(mktemp -d "${TMPDIR:-/tmp}/dtlvnative-rust.XXXXXX")
+trap 'rm -rf -- "$FIXTURE_DIR"' EXIT
+CMAKE_ARGS=(-DCMAKE_BUILD_TYPE=Release)
+EXE_SUFFIX=""
+case "$(uname -s)" in
+  MINGW*|MSYS*|CYGWIN*)
+    # Native Cargo/CMake programs need Windows paths, including paths passed
+    # through cargo run to the fixture. Git Bash supplies cygpath.
+    FIXTURE_DIR=$(cygpath -m "$FIXTURE_DIR")
+    CMAKE_ARGS+=(-G "Visual Studio 17 2022" -A x64)
+    EXE_SUFFIX=".exe"
+    ;;
+esac
+cmake -S src -B "$FIXTURE_DIR/build" "${CMAKE_ARGS[@]}" \
+  -DCMAKE_INSTALL_PREFIX="$FIXTURE_DIR/build/lib" \
+  -DDTLV_USE_USEARCH=OFF -DDTLV_USE_LLAMA=OFF -DDTLV_BUILD_RUST_FIXTURE=ON
+cmake --build "$FIXTURE_DIR/build" --config Release --parallel 2
+FIXTURE_EXE="$FIXTURE_DIR/build/bin/storage_fixture$EXE_SUFFIX"
+mkdir "$FIXTURE_DIR/from-c" "$FIXTURE_DIR/from-rust"
+"$FIXTURE_EXE" write "$FIXTURE_DIR/from-c"
+cargo run --manifest-path "$MANIFEST" --locked -p dtlvnative --example storage_fixture -- read "$FIXTURE_DIR/from-c"
+cargo run --manifest-path "$MANIFEST" --locked -p dtlvnative --example storage_fixture -- write "$FIXTURE_DIR/from-rust"
+"$FIXTURE_EXE" read "$FIXTURE_DIR/from-rust"
+echo "C/Rust storage fixtures passed in both directions."

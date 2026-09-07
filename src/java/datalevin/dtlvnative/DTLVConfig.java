@@ -13,7 +13,9 @@ import org.bytedeco.javacpp.tools.*;
                               "../../src/llama.cpp/include/",
                               "../../src/llama.cpp/ggml/include/",
                               "../../src/" },
-                           include = { "dlmdb.h", "usearch.h", "dtlv.h" },
+                           // JavaCPP parses listed headers without following their includes.
+                           include = { "dlmdb.h", "usearch.h", "dtlv_common.h",
+                                       "dtlv_storage.h", "dtlv_llama.h" },
                            linkpath = { "../../src/" }
                            ),
                 @Platform( // Windows

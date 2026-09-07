@@ -8,6 +8,8 @@ libraries := $(lib_lmdb) $(lib_usearch) $(lib_llama) $(lib_dtlv)$(SOEXT)
 
 CPPFLAGS += -Illama.cpp/include -Illama.cpp/ggml/include -Illama.cpp/tools/mtmd
 LLAMA_LIB ?= -lmtmd -lvendor-hash -lllama -lggml -lggml-cpu -lggml-base
+DTLV_CFLAGS ?= -pthread -fPIC -O2 -Wall -g
+DTLV_OBJS := dtlv.o dtlv_llama.o
 
 .PHONY: all $(libraries)
 all: $(libraries)
@@ -35,9 +37,14 @@ $(lib_llama):
 		}
 		cp $(vendor_hash_static) ./libvendor-hash.a
 
-$(lib_dtlv)$(SOEXT): $(lib_lmdb) $(lib_usearch) $(lib_llama)
-		$(CC) $(CPPFLAGS) -pthread -fPIC -O2 -Wall -g -c dtlv.c -o dtlv.o
-		$(CXX) $(LDFLAGS) -pthread -shared -fPIC -o $@ dtlv.o -L. -ldlmdb $(OMP_LIB) $(USEARCH_LIB) $(LLAMA_LIB)
+dtlv.o: dtlv.c dtlv_storage.h dtlv_common.h $(lib_lmdb)/dlmdb.h
+		$(CC) $(CPPFLAGS) $(DTLV_CFLAGS) -c $< -o $@
+
+dtlv_llama.o: dtlv_llama.c dtlv_llama.h dtlv_common.h $(lib_lmdb)/dlmdb.h
+		$(CC) $(CPPFLAGS) $(DTLV_CFLAGS) -c $< -o $@
+
+$(lib_dtlv)$(SOEXT): $(lib_lmdb) $(lib_usearch) $(lib_llama) $(DTLV_OBJS)
+		$(CXX) $(LDFLAGS) -pthread -shared -fPIC -o $@ $(DTLV_OBJS) -L. -ldlmdb $(OMP_LIB) $(USEARCH_LIB) $(LLAMA_LIB)
 
 clean:
 		$(RM) *.o *.a *.so *.dylib
