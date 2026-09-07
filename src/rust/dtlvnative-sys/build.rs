@@ -1,5 +1,7 @@
 use std::{env, fs, path::Path, path::PathBuf, process::Command};
 
+mod build_support;
+
 fn revision(source: &Path) -> String {
     // A revision can change without changing the compiled files. Watch the
     // submodule's real git directory as well as the source inputs below.
@@ -36,11 +38,12 @@ fn revision(source: &Path) -> String {
 
 fn main() {
     let manifest = PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").unwrap());
-    let source = manifest.join("../..").canonicalize().unwrap();
+    let source = build_support::native_source_dir(&manifest);
     let out = PathBuf::from(env::var_os("OUT_DIR").unwrap());
     let target = env::var("TARGET").unwrap();
     println!("cargo:rerun-if-changed=wrapper.h");
     println!("cargo:rerun-if-changed=build.rs");
+    println!("cargo:rerun-if-changed=build_support.rs");
     println!("cargo:rerun-if-env-changed=LIBCLANG_PATH");
 
     let enabled = env::var_os("CARGO_FEATURE_DLMDB").is_some();
@@ -85,7 +88,7 @@ fn main() {
     let windows = env::var("CARGO_CFG_TARGET_OS").unwrap() == "windows";
     let mut native = cc::Build::new();
     native
-        .include(&source)
+        .include(source)
         .include(source.join("lmdb/libraries/liblmdb"))
         .file(source.join("dtlv.c"))
         .file(source.join("lmdb/libraries/liblmdb/mdb.c"))
@@ -129,13 +132,7 @@ fn main() {
     // Reuse cc's target, SDK, include and preprocessor settings. In particular,
     // CFLAGS definitions must affect both the C compilation and generated ABI.
     if compiler.is_like_msvc() {
-        for arg in compiler.args().iter().filter_map(|arg| arg.to_str()) {
-            if let Some(value) = arg.strip_prefix("/D").or_else(|| arg.strip_prefix("-D")) {
-                bindings = bindings.clang_arg(format!("-D{value}"));
-            } else if let Some(value) = arg.strip_prefix("/I").or_else(|| arg.strip_prefix("-I")) {
-                bindings = bindings.clang_arg(format!("-I{value}"));
-            }
-        }
+        bindings = bindings.clang_args(build_support::msvc_clang_args(compiler.args()));
     } else {
         bindings = bindings.clang_args(compiler.args().iter().map(|arg| arg.to_string_lossy()));
     }
@@ -144,7 +141,7 @@ fn main() {
     }
     bindings
         .generate()
-        .expect("Could not generate DLMDB bindings; install libclang or set LIBCLANG_PATH")
+        .expect("Could not generate DLMDB bindings; see the Clang diagnostics above")
         .write_to_file(out.join("bindings.rs"))
         .unwrap();
     native.compile("dtlvnative_storage");

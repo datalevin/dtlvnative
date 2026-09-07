@@ -99,7 +99,11 @@ the code before the split. DLMDB needs no repository patch. Patches/configuratio
 for optional USearch and llama Cargo builds remain part of their implementation.
 
 The build uses `cc` target/compiler discovery and passes its Unix compiler
-arguments, or MSVC include/define arguments, to bindgen. Compiler/SDK settings
+arguments, or MSVC include/define/undefine arguments, to bindgen. Separate
+preprocessor flags retain their following operands. Native source paths come
+from Cargo's manifest directory without `canonicalize`, whose
+[Windows extended-length paths](https://doc.rust-lang.org/std/fs/fn.canonicalize.html#platform-specific-behavior)
+can break nested header lookup in Clang. Compiler/SDK settings
 come from the usual `cc` environment variables; bindgen also supports
 `LIBCLANG_PATH` and `BINDGEN_EXTRA_CLANG_ARGS`. Any manually supplied ABI settings
 must agree between C and bindgen. Custom ABI configurations and cross compilation
@@ -110,8 +114,9 @@ aggregate library with this archive in one process.
 
 Validated locally on macOS ARM64, Rust/Cargo 1.98.1:
 
-- `script/test-rust`: seven runtime regressions, two compile-fail cases, Clippy,
-  formatting, feature-disabled compilation, example, and bidirectional C fixtures.
+- `script/test-rust`: seven runtime regressions, two build-input regressions,
+  two compile-fail cases, Clippy, formatting, feature-disabled compilation,
+  example, and bidirectional C fixtures.
 - The storage-only CMake configure/build shown above.
 - `./script/build-macos`, including USearch `test_cpp` and `test_c`.
 - Fresh JavaCPP JNI generation and Java `Test`: all storage/vector cases and
@@ -126,8 +131,11 @@ The [Rust checks in build.yml](../../.github/workflows/build.yml) run in the exi
 build job on every matrix platform: macOS ARM64, Linux x86-64, Linux ARM64,
 and Windows x86-64. These four platforms are the required validation scope from
 Phase 1 onward. Windows CI initially failed because Git Bash selected its Unix
-`link.exe`; the test runner now selects MSVC explicitly. A successful Windows
-rerun and Linux results remain pending. FreeBSD and cross compilation remain
-outside this initial matrix.
+`link.exe`; the test runner now selects MSVC explicitly. The next run reached
+bindgen and failed on nested header lookup. The build now avoids introducing
+verbatim Windows paths and preserves separate MSVC include operands. Two build
+input regressions cover header lookup and macro settings through Clang, plus
+missing-operand diagnostics. A successful Windows rerun and Linux results remain
+pending. FreeBSD and cross compilation remain outside this initial matrix.
 Packaged platform binaries were not regenerated. Detailed local commands are
 in [phase-1.md](phase-1.md).

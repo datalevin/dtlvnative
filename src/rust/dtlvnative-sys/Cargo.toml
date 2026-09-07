@@ -16,5 +16,9 @@ dlmdb = []
 bindgen.workspace = true
 cc.workspace = true
 
+[dev-dependencies]
+bindgen.workspace = true
+tempfile.workspace = true
+
 [lints]
 workspace = true
