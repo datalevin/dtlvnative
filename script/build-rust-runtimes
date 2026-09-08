@@ -6,6 +6,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import sys
+from native_patch import apply_native_patch
 
 ROOT = Path(__file__).resolve().parent.parent
 OUT = Path(sys.argv[1])
@@ -36,7 +37,7 @@ def copy(source, destination):
 
 def shared_fingerprint():
     fingerprint = hashlib.sha256()
-    for name in ["src/CMakeLists.txt", "src/dtlv_llama.c", "src/dtlv_llama.h", "src/dtlv_common.h", "script/build-rust-runtimes"]:
+    for name in ["src/CMakeLists.txt", "src/dtlv_llama.c", "src/dtlv_llama.h", "src/dtlv_common.h", "script/build-rust-runtimes", "script/native_patch.py"]:
         fingerprint.update(name.encode() + b"\0" + (ROOT / name).read_bytes().replace(b"\r\n", b"\n") + b"\0")
     return fingerprint.hexdigest()
 
@@ -49,12 +50,8 @@ def snapshot(component, directory, patch):
         if encoded:
             relative = Path(os.fsdecode(encoded))
             copy(original / relative, private / relative)
-    # git apply without --index works on this isolated tree; no checkout edits.
     patch = ROOT / "patches" / patch
-    reverse = subprocess.run(["git", "apply", "--reverse", "--check", str(patch)], cwd=private, capture_output=True)
-    if reverse.returncode:
-        run("git", "apply", "--check", str(patch), cwd=private)
-        run("git", "apply", str(patch), cwd=private)
+    apply_native_patch(private, patch)
     info = [f"{component}_revision={output('git', '-C', original, 'rev-parse', 'HEAD')}",
             f"patch_sha256={hashlib.sha256(patch.read_bytes().replace(bytes([13, 10]), bytes([10]))).hexdigest()}"]
     fingerprint = hashlib.sha256()

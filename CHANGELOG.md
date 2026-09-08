@@ -13,6 +13,8 @@
 - distribute separate USearch and llama shared runtimes with OpenMP, license
   notices, source provenance, and checksum pins for all four CI platforms
 ### Fixed
+- fix the USearch patch's CRLF syntax on Windows and ensure Rust native
+  snapshots apply patches instead of silently skipping paths in the parent repo
 - allow native batch embeddings to use multiple sequences within the context
   token budget; reject sequence limits and token-count overflow before decoding
 

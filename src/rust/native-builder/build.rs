@@ -161,6 +161,10 @@ fn main() {
         println!("cargo:rerun-if-changed={}", script.display());
         println!(
             "cargo:rerun-if-changed={}",
+            script.with_file_name("native_patch.py").display()
+        );
+        println!(
+            "cargo:rerun-if-changed={}",
             source.join("CMakeLists.txt").display()
         );
         for file in [

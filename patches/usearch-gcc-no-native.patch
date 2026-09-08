@@ -26,19 +26,18 @@ diff --git a/cpp/test.cpp b/cpp/test.cpp
 index 1ab4f06..b7afe12 100644
 --- a/cpp/test.cpp
 +++ b/cpp/test.cpp
-@@ -22,6 +22,7 @@
+@@ -22,5 +22,6 @@
  #include <algorithm>     // `std::shuffle`
  #include <random>        // `std::default_random_engine`
  #include <stdexcept>     // `std::terminate`
 +#include <type_traits>   // `std::add_const` in StringZilla
  #include <unordered_map> // `std::unordered_map`
  #include <vector>        // `std::vector`
-
 diff --git a/include/usearch/index.hpp b/include/usearch/index.hpp
 index eeb18f5..2105ab6 100644
 --- a/include/usearch/index.hpp
 +++ b/include/usearch/index.hpp
-@@ -94,11 +94,13 @@
+@@ -94,9 +94,11 @@
  #include <climits>   // `CHAR_BIT`
  #include <cmath>     // `std::sqrt`
  #include <cstring>   // `std::memset`
@@ -50,5 +49,3 @@ index eeb18f5..2105ab6 100644
  #include <thread>    // `std::thread`
 +#include <type_traits> // `std::is_pod`, `std::enable_if`
  #include <utility>   // `std::pair`
-
- // Helper macros for concatenation and stringification
