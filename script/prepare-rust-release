@@ -1,0 +1,119 @@
+#!/usr/bin/env python3
+"""Stage source crates and verified native assets from CI artifacts."""
+import argparse
+import hashlib
+import json
+import re
+import shutil
+import tarfile
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+TARGETS = {
+    "aarch64-apple-darwin",
+    "x86_64-unknown-linux-gnu",
+    "aarch64-unknown-linux-gnu",
+    "x86_64-pc-windows-msvc",
+}
+
+
+def digest(path):
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def prepare(inputs, output, local=False, release_tag=None):
+    workspace = (ROOT / "src/rust/Cargo.toml").read_text()
+    version = re.search(r'^version = "([^"]+)"', workspace, re.M)[1]
+    records = {}
+    baseline = {}
+    openmp = {}
+    tag = None
+    for directory in inputs:
+        manifest = json.loads((directory / "native-artifacts.json").read_text())
+        if manifest["schema"] != 2 or manifest["version"] != version:
+            raise ValueError(f"Manifest version mismatch: {directory}")
+        if tag is not None and manifest["release_tag"] != tag:
+            raise ValueError("Native artifacts reference different releases")
+        tag = manifest["release_tag"]
+        if not re.fullmatch(r"[A-Za-z0-9._-]+", tag):
+            raise ValueError("Invalid release tag")
+        for target, components in manifest["artifacts"].items():
+            if target not in TARGETS:
+                raise ValueError(f"Unexpected target: {target}")
+            for component, record in components.items():
+                if component not in {"dlmdb", "usearch", "llama"} or (target, component) in records:
+                    raise ValueError(f"Unexpected or duplicate component: {target}/{component}")
+                archive = directory / f"dtlvnative-{version}-{target}-{component}.tar.gz"
+                bindings = directory / "bindings" / f"{target}-{component}.rs"
+                if digest(archive) != record["archive_sha256"] or digest(bindings) != record["bindings_sha256"]:
+                    raise ValueError(f"Checksum mismatch: {target}/{component}")
+                if component == "dlmdb":
+                    library = "dtlvnative_storage.lib" if target.endswith("msvc") else "libdtlvnative_storage.a"
+                    expected = {library, "build-info.txt", "LICENSE", "DLMDB-LICENSE"}
+                else:
+                    suffix = ".dll" if target.endswith("msvc") else ".dylib" if target.endswith("darwin") else ".so"
+                    prefix = "" if target.endswith("msvc") else "lib"
+                    library = f"{prefix}dtlvnative_{component}{suffix}"
+                    omp = "vcomp140.dll" if target.endswith("msvc") else "libomp.dylib" if target.endswith("darwin") else "libgomp.so.1"
+                    expected = {library, omp, "build-info.txt", "LICENSE", "OPENMP-LICENSE", f"{component.upper()}-LICENSE"}
+                with tarfile.open(archive) as package:
+                    entries = package.getmembers()
+                    if len(entries) != len(expected) or {e.name for e in entries} != expected or not all(e.isfile() for e in entries):
+                        raise ValueError(f"Unexpected archive contents: {target}/{component}")
+                    info = package.extractfile("build-info.txt").read().decode()
+                    if f"target={target}" not in info.splitlines():
+                        raise ValueError(f"Archive target mismatch: {target}")
+                    if component != "dlmdb":
+                        checksum = hashlib.sha256(package.extractfile(omp).read()).hexdigest()
+                        if target in openmp and checksum != openmp[target]:
+                            raise ValueError(f"Components bundle different OpenMP runtimes: {target}")
+                        openmp[target] = checksum
+                    # Sources agree across platforms; compiler/SDK settings differ.
+                    sources = sorted(line for line in info.splitlines() if line.startswith(("fnv1a64:", "dlmdb_revision=", "usearch_revision=", "llama_revision=", "patch_sha256=", "native_sources_sha256=", "shared_sources_sha256=")))
+                    if not sources or (component in baseline and sources != baseline[component]):
+                        raise ValueError("Native artifacts were built from different sources")
+                    baseline[component] = sources
+                records[target, component] = (record, archive, bindings)
+    required = {(target, component) for target in TARGETS for component in ["dlmdb", "usearch", "llama"]}
+    if not records or (not local and set(records) != required):
+        raise ValueError(f"Require all three components on four platforms; found {sorted(records)}")
+    if release_tag is not None and release_tag != tag:
+        raise ValueError(f"Expected release {release_tag}, found {tag}")
+    if output.exists():
+        raise ValueError(f"Output already exists; choose a fresh staging directory: {output}")
+    crates = output / "crates"
+    native = output / "native"
+    crates.mkdir(parents=True)
+    native.mkdir()
+    for name in ["dtlvnative-sys", "dtlvnative"]:
+        shutil.copytree(ROOT / "src/rust" / name, crates / name,
+                        ignore=shutil.ignore_patterns("target", "bindings", "*.a", "*.lib"))
+    # The private builder and native checkout never enter the release workspace.
+    workspace = workspace.replace(', "native-builder"', "")
+    (crates / "Cargo.toml").write_text(workspace)
+    shutil.copy2(ROOT / "src/rust/Cargo.lock", crates / "Cargo.lock")
+    binding_dir = crates / "dtlvnative-sys/bindings"
+    binding_dir.mkdir()
+    manifest = {"schema": 2, "version": version, "release_tag": tag, "artifacts": {}}
+    for (target, component), record in sorted(records.items()):
+        manifest["artifacts"].setdefault(target, {})[component] = record[0]
+    encoded = json.dumps(manifest, indent=2) + "\n"
+    (crates / "dtlvnative-sys/native-artifacts.json").write_text(encoded)
+    (native / "native-artifacts.json").write_text(encoded)
+    sums = []
+    for record, archive, bindings in records.values():
+        shutil.copy2(archive, native / archive.name)
+        shutil.copy2(bindings, binding_dir / bindings.name)
+        sums.append(f'{record["archive_sha256"]}  {archive.name}\n')
+    (native / "SHA256SUMS").write_text("".join(sorted(sums)))
+    print(f"Staged Rust {version} for {tag} at {output}")
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("inputs", type=Path, nargs="+")
+    parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--release-tag")
+    parser.add_argument("--local", action="store_true", help="Allow one platform for local package validation only")
+    args = parser.parse_args()
+    prepare(args.inputs, args.output, args.local, args.release_tag)

@@ -49,6 +49,12 @@ jobs:
           path: target/embedding-models
           key: ${{ runner.os }}-${{ matrix.platform }}-multilingual-e5-small-q8_0-v1
 
+      - name: Cache text model
+        uses: actions/cache@v4
+        with:
+          path: target/text-models
+          key: ${{ runner.os }}-${{ matrix.platform }}-rust-models-${{ hashFiles('src/rust/model-fixtures.json') }}
+
       - name: Install Lein (Unix)
         if: runner.os != 'Windows'
         uses: knicknic/os-specific-run@v1.0.3
@@ -71,9 +77,9 @@ jobs:
           brew install libomp llvm
           echo "LIBCLANG_PATH=$(brew --prefix llvm)/lib" >> "$GITHUB_ENV"
 
-      - name: Install libclang on Linux
+      - name: Install Linux build tools
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y libclang-dev
+        run: sudo apt-get update && sudo apt-get install -y libclang-dev gcc-12 g++-12 cmake
 
       - name: Setup Visual Studio shell
         if: runner.os == 'Windows'
@@ -97,9 +103,27 @@ jobs:
           rustup toolchain install stable --profile minimal --component rustfmt --component clippy
           rustup default stable
 
-      - name: Rust storage checks
+      - name: Rust checks and native dependency tests
         shell: bash
+        env:
+          DTLVNATIVE_RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: script/test-rust
+
+      - name: Rust embedding and text model checks
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            python script/test-rust-models --download
+          else
+            python3 script/test-rust-models --download
+          fi
+
+      - name: Save Rust native release artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: rust-native-${{ matrix.platform }}
+          path: target/rust-native/
+          if-no-files-found: error
 
       # macOS ARM64 build
       # - name: Build macOS ARM64
@@ -214,3 +238,31 @@ jobs:
       #     call ..\lein.bat run
       #     if errorlevel 1 exit /b %errorlevel%
       #     if "%GITHUB_EVENT_NAME%"=="release" call ..\lein.bat deploy clojars
+
+  # Publication runs once, after every platform in the existing matrix passes.
+  publish-rust:
+    if: github.event_name == 'release'
+    needs: build
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+      RELEASE_TAG: ${{ github.event.release.tag_name }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust tools
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: rust-native-*
+          path: target/rust-release-inputs
+      - name: Assemble source crates and native release assets
+        run: |
+          python3 script/prepare-rust-release target/rust-release-inputs/rust-native-* \
+            --release-tag "$RELEASE_TAG" --output target/rust-release
+      # - name: Verify packages and publish Rust release
+      #   run: script/publish-rust target/rust-release "$RELEASE_TAG" --publish

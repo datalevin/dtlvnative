@@ -4,9 +4,11 @@ set -euo pipefail
 ROOT_DIR=$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)
 cd "$ROOT_DIR"
 MANIFEST=src/rust/Cargo.toml
+PYTHON=python3
 
 case "$(uname -s)" in
   MINGW*|MSYS*|CYGWIN*)
+    PYTHON=python
     # Git Bash puts its Unix link.exe ahead of MSVC. Find Microsoft's linker
     # beside cl.exe, before Cargo compiles even its dependency build scripts.
     if ! MSVC_COMPILER=$(command -v cl.exe); then
@@ -26,13 +28,29 @@ case "$(uname -s)" in
 esac
 
 cargo fmt --manifest-path "$MANIFEST" --all -- --check
+"$PYTHON" -B -m unittest discover -s src/rust/tests -p 'test_*.py'
+NATIVE_DIR="$ROOT_DIR/target/rust-native"
+case "$(uname -s)" in
+  MINGW*|MSYS*|CYGWIN*) NATIVE_DIR=$(cygpath -m "$NATIVE_DIR") ;;
+esac
+BUILD_ARGS=("$NATIVE_DIR")
+if [ -n "${DTLVNATIVE_RELEASE_TAG:-}" ]; then
+  BUILD_ARGS+=("$DTLVNATIVE_RELEASE_TAG")
+fi
+cargo run --manifest-path "$MANIFEST" --locked -p dtlvnative-build --features full -- "${BUILD_ARGS[@]}"
+export DTLVNATIVE_ARTIFACT_MANIFEST="$NATIVE_DIR/native-artifacts.json"
+export DTLVNATIVE_NATIVE_DIR="$NATIVE_DIR"
+export DTLVNATIVE_OFFLINE=1
 cargo clippy --manifest-path "$MANIFEST" --locked --workspace --all-targets --all-features -- -D warnings
-cargo test --manifest-path "$MANIFEST" --locked --workspace
-cargo check --manifest-path "$MANIFEST" --locked --workspace --all-targets --no-default-features
+cargo test --manifest-path "$MANIFEST" --locked --workspace --all-features
+for FEATURE in dlmdb usearch llama full; do
+  cargo check --manifest-path "$MANIFEST" --locked -p dtlvnative --all-targets --no-default-features --features "$FEATURE"
+done
+cargo check --manifest-path "$MANIFEST" --locked -p dtlvnative --all-targets --no-default-features
 cargo run --manifest-path "$MANIFEST" --locked -p dtlvnative --example storage
 
 # Compile a separate C executable against the same source revision, then close
-# and reopen persisted databases in both directions. No model/vector build needed.
+# and reopen persisted databases in both directions.
 FIXTURE_DIR=$(mktemp -d "${TMPDIR:-/tmp}/dtlvnative-rust.XXXXXX")
 trap 'rm -rf -- "$FIXTURE_DIR"' EXIT
 CMAKE_ARGS=(-DCMAKE_BUILD_TYPE=Release)
@@ -57,3 +75,46 @@ cargo run --manifest-path "$MANIFEST" --locked -p dtlvnative --example storage_f
 cargo run --manifest-path "$MANIFEST" --locked -p dtlvnative --example storage_fixture -- write "$FIXTURE_DIR/from-rust"
 "$FIXTURE_EXE" read "$FIXTURE_DIR/from-rust"
 echo "C/Rust storage fixtures passed in both directions."
+
+"$NATIVE_DIR/rust_vector_fixture$EXE_SUFFIX" write "$FIXTURE_DIR/from-c.usearch"
+cargo run --manifest-path "$MANIFEST" --locked -p dtlvnative --no-default-features --features usearch --example vector_fixture -- read "$FIXTURE_DIR/from-c.usearch"
+"$NATIVE_DIR/rust_vector_fixture$EXE_SUFFIX" read "$FIXTURE_DIR/from-c.usearch.rust-buffer"
+cargo run --manifest-path "$MANIFEST" --locked -p dtlvnative --no-default-features --features usearch --example vector_fixture -- write "$FIXTURE_DIR/from-rust.usearch"
+"$NATIVE_DIR/rust_vector_fixture$EXE_SUFFIX" read "$FIXTURE_DIR/from-rust.usearch"
+echo "C/Rust vector fixtures passed in both directions."
+
+# Package and compile both crates without any surrounding native source tree.
+"$PYTHON" script/prepare-rust-release "$NATIVE_DIR" --local --output "$FIXTURE_DIR/release"
+unset DTLVNATIVE_ARTIFACT_MANIFEST
+export DTLVNATIVE_NATIVE_DIR="$FIXTURE_DIR/release/native"
+export CARGO_TARGET_DIR="$FIXTURE_DIR/package-target"
+# These intentionally invalid paths prove consumers do not invoke a compiler
+# for native sources or libclang, even in a clean target directory.
+export CC=dtlvnative-no-native-compiler CXX=dtlvnative-no-native-compiler
+export LIBCLANG_PATH="$FIXTURE_DIR/no-libclang"
+PACKAGE_MANIFEST="$FIXTURE_DIR/release/crates/Cargo.toml"
+cargo test --manifest-path "$PACKAGE_MANIFEST" --workspace --all-features --offline
+cargo package --manifest-path "$PACKAGE_MANIFEST" --workspace --all-features --allow-dirty --offline
+# Exercise the deployed runtime directory in a fresh process, without Cargo.
+"$PYTHON" - "$DTLVNATIVE_NATIVE_DIR" "$FIXTURE_DIR/deployed" "$CARGO_TARGET_DIR" <<'PY'
+import os
+from pathlib import Path
+import subprocess
+import sys
+import tarfile
+archives, deployed, target = map(Path, sys.argv[1:])
+deployed.mkdir()
+for archive in archives.glob("*.tar.gz"):
+    with tarfile.open(archive) as package:
+        for entry in package.getmembers():
+            if entry.name.endswith((".dll", ".dylib", ".so", ".so.1")):
+                assert entry.isfile() and Path(entry.name).name == entry.name
+                (deployed / entry.name).write_bytes(package.extractfile(entry).read())
+environment = dict(os.environ, DTLVNATIVE_RUNTIME_DIR=str(deployed))
+tests = [path for path in (target / "debug/deps").glob("runtimes-*")
+         if path.suffix == (".exe" if os.name == "nt" else "") and path.is_file()]
+assert tests, "Missing runtime integration test executable"
+for executable in tests:
+    subprocess.run([str(executable)], env=environment, check=True)
+PY
+echo "Source crates build and package against prebuilt native artifacts."

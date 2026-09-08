@@ -1,5 +1,21 @@
 # Change Log
 
+## Unreleased
+### Added
+- prepare `dtlvnative` and `dtlvnative-sys` source crate releases with
+  per-platform prebuilt DLMDB storage archives, generated bindings, and pinned
+  SHA-256 checksums; keep Rust validation and publishing in `build.yml`
+- verify isolated source packages without native compiler or libclang access
+- add Rust USearch indexing, filtered search, metric/scalar adapters, exact
+  search, serialization, and borrowed index views
+- add Rust embedding, tokenization, generation, summarization, and vision/OCR
+  wrappers; validate pinned embedding/text models and skip vision/OCR model tests
+- distribute separate USearch and llama shared runtimes with OpenMP, license
+  notices, source provenance, and checksum pins for all four CI platforms
+### Fixed
+- allow native batch embeddings to use multiple sequences within the context
+  token budget; reject sequence limits and token-count overflow before decoding
+
 ## 1.0.0
 ### Changed
 - update dlmdb to 1.1.0 (`310e049d6e`)

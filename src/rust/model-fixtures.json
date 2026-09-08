@@ -1,0 +1,12 @@
+{
+  "embedding": {
+    "path": "target/embedding-models/multilingual-e5-small-Q8_0.gguf",
+    "url": "https://huggingface.co/keisuke-miyako/multilingual-e5-small-gguf-q8_0/resolve/e1da94460f223e3204e75dfe51350e5491c879d4/multilingual-e5-small-Q8_0.gguf",
+    "sha256": "0d5a5a0b0ad84faad6357a6145e769b0661f0efbf53acf74598afc34dab454f4"
+  },
+  "text": {
+    "path": "target/text-models/qwen2.5-0.5b-instruct-q5_k_m.gguf",
+    "url": "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/9217f5db79a29953eb74d5343926648285ec7e67/qwen2.5-0.5b-instruct-q5_k_m.gguf",
+    "sha256": "041474553fcabfc2a2d67903f9d2c2e50bd92528e670da4f33b5d0ce6e59fd55"
+  }
+}

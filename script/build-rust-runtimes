@@ -1,0 +1,144 @@
+#!/usr/bin/env python3
+"""Build optional native runtimes in a private snapshot, preserving the checkout."""
+import hashlib
+import os
+from pathlib import Path
+import shutil
+import subprocess
+import sys
+
+ROOT = Path(__file__).resolve().parent.parent
+OUT = Path(sys.argv[1])
+COMPONENTS = sys.argv[2:]
+SOURCE = OUT / "native-source"
+BUILD = OUT / "runtime-build"
+RUNTIME = BUILD / "runtime"
+
+
+def run(*args, **kwargs):
+    subprocess.run([str(arg) for arg in args], check=True, **kwargs)
+
+
+def output(*args):
+    return subprocess.check_output([str(arg) for arg in args]).decode().strip()
+
+
+def copy(source, destination):
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    if not destination.exists() or source.read_bytes() != destination.read_bytes():
+        # Homebrew runtimes can be read-only; a prior install-name rewrite
+        # changes their bytes and requires a writable destination on rebuild.
+        if destination.exists():
+            destination.chmod(destination.stat().st_mode | 0o200)
+        shutil.copy2(source, destination)
+        destination.chmod(destination.stat().st_mode | 0o200)
+
+
+def shared_fingerprint():
+    fingerprint = hashlib.sha256()
+    for name in ["src/CMakeLists.txt", "src/dtlv_llama.c", "src/dtlv_llama.h", "src/dtlv_common.h", "script/build-rust-runtimes"]:
+        fingerprint.update(name.encode() + b"\0" + (ROOT / name).read_bytes().replace(b"\r\n", b"\n") + b"\0")
+    return fingerprint.hexdigest()
+
+
+def snapshot(component, directory, patch):
+    original = ROOT / "src" / directory
+    private = SOURCE / directory
+    files = subprocess.check_output(["git", "-C", str(original), "ls-files", "--recurse-submodules", "-z"]).split(b"\0")
+    for encoded in files:
+        if encoded:
+            relative = Path(os.fsdecode(encoded))
+            copy(original / relative, private / relative)
+    # git apply without --index works on this isolated tree; no checkout edits.
+    patch = ROOT / "patches" / patch
+    reverse = subprocess.run(["git", "apply", "--reverse", "--check", str(patch)], cwd=private, capture_output=True)
+    if reverse.returncode:
+        run("git", "apply", "--check", str(patch), cwd=private)
+        run("git", "apply", str(patch), cwd=private)
+    info = [f"{component}_revision={output('git', '-C', original, 'rev-parse', 'HEAD')}",
+            f"patch_sha256={hashlib.sha256(patch.read_bytes().replace(bytes([13, 10]), bytes([10]))).hexdigest()}"]
+    fingerprint = hashlib.sha256()
+    notices = []
+    for encoded in sorted(files):
+        if not encoded:
+            continue
+        relative = Path(os.fsdecode(encoded))
+        data = (private / relative).read_bytes().replace(b"\r\n", b"\n")
+        fingerprint.update(relative.as_posix().encode() + b"\0" + data + b"\0")
+        if "LICENSE" in relative.name.upper() or relative.name.upper().startswith("COPYING"):
+            notices.append(f"--- {directory}/{relative.as_posix()} ---\n".encode() + data + b"\n")
+    info.append(f"native_sources_sha256={fingerprint.hexdigest()}")
+    info.append(f"shared_sources_sha256={shared_fingerprint()}")
+    (OUT / f"{component}-provenance.txt").write_text("\n".join(info) + "\n")
+    (OUT / f"{component.upper()}-LICENSE").write_bytes(b"\n".join(notices))
+
+
+for name in ["CMakeLists.txt", "dtlv.c", "dtlv_storage.h", "dtlv_llama.c", "dtlv_llama.h", "dtlv_common.h",
+             "lmdb/libraries/liblmdb/mdb.c", "lmdb/libraries/liblmdb/midl.c", "lmdb/libraries/liblmdb/dlmdb.h", "lmdb/libraries/liblmdb/midl.h",
+             "win32/unistd.h", "rust/tests/vector_fixture.c"]:
+    copy(ROOT / "src" / name, SOURCE / name)
+if "usearch" in COMPONENTS:
+    snapshot("usearch", "usearch", "usearch-gcc-no-native.patch")
+if "llama" in COMPONENTS:
+    snapshot("llama", "llama.cpp", "llama-mtmd-build.patch")
+
+args = ["cmake", "-S", SOURCE, "-B", BUILD,
+        "-DCMAKE_BUILD_TYPE=Release", f"-DCMAKE_INSTALL_PREFIX={BUILD / 'lib'}",
+        "-DDTLV_BUILD_RUST_RUNTIMES=ON", "-DDTLV_BUILD_TESTS=ON",
+        f"-DDTLV_USE_USEARCH={'ON' if 'usearch' in COMPONENTS else 'OFF'}",
+        f"-DDTLV_USE_LLAMA={'ON' if 'llama' in COMPONENTS else 'OFF'}"]
+if sys.platform == "darwin":
+    llvm = Path(os.environ.get("LLVM_PREFIX") or output("brew", "--prefix", "llvm"))
+    omp = Path(os.environ.get("LIBOMP_PREFIX") or output("brew", "--prefix", "libomp"))
+    args += [f"-DCMAKE_C_COMPILER={llvm / 'bin/clang'}", f"-DCMAKE_CXX_COMPILER={llvm / 'bin/clang++'}",
+             f"-DCMAKE_OSX_SYSROOT={output('xcrun', '--show-sdk-path')}", f"-DCMAKE_PREFIX_PATH={omp}"]
+    omp_library, omp_license = omp / "lib/libomp.dylib", omp / "LICENSE.TXT"
+elif sys.platform == "win32":
+    args += ["-G", "Visual Studio 17 2022", "-A", "x64"]
+    redist = Path(os.environ["VCToolsRedistDir"])
+    omp_library = next(redist.glob("x64/Microsoft.VC*.OpenMP/vcomp140.dll"))
+    # Microsoft permits redistribution under the Visual Studio license.
+    omp_license = OUT / "MSVC-OPENMP-LICENSE"
+    omp_license.write_text("Microsoft Visual C++ OpenMP runtime (vcomp140.dll).\nRedistributed under the Visual Studio 2022 license and REDIST list:\nhttps://visualstudio.microsoft.com/license-terms/vs2022-ga-community/\nhttps://learn.microsoft.com/en-us/visualstudio/releases/2022/redistribution\n")
+else:
+    cc = os.environ.get("CC") or ("gcc-12" if shutil.which("gcc-12") else "gcc")
+    cxx = os.environ.get("CXX") or ("g++-12" if shutil.which("g++-12") else "g++")
+    args += [f"-DCMAKE_C_COMPILER={cc}", f"-DCMAKE_CXX_COMPILER={cxx}"]
+    omp_library = Path(output(cc, "-print-file-name=libgomp.so.1"))
+    omp_license = Path("/usr/share/doc/libgomp1/copyright")
+run(*args)
+# Record the actual CMake compiler paths and selected build options per component.
+cache = (BUILD / "CMakeCache.txt").read_text()
+options = ("CMAKE_C_COMPILER:", "CMAKE_CXX_COMPILER:", "CMAKE_BUILD_TYPE:", "CMAKE_OSX_DEPLOYMENT_TARGET:", "CMAKE_GENERATOR:", "USEARCH_", "GGML_")
+configuration = "\n".join(line for line in cache.splitlines() if line.startswith(options) and not line.endswith("-NOTFOUND"))
+for component in COMPONENTS:
+    with (OUT / f"{component}-provenance.txt").open("a") as info:
+        info.write(configuration + "\n")
+targets = []
+if "usearch" in COMPONENTS:
+    targets += ["usearch_c", "test_c", "test_cpp", "rust_vector_fixture"]
+if "llama" in COMPONENTS:
+    targets += ["dtlvnative_llama"]
+run("cmake", "--build", BUILD, "--config", "Release", "--parallel", os.environ.get("CMAKE_BUILD_PARALLEL_LEVEL", "2"), "--target", *targets)
+copy(omp_library, RUNTIME / omp_library.name)
+copy(omp_license, OUT / "OPENMP-LICENSE")
+if sys.platform == "darwin":
+    run("install_name_tool", "-id", "@rpath/libomp.dylib", RUNTIME / "libomp.dylib")
+    for component in COMPONENTS:
+        library = RUNTIME / f"libdtlvnative_{component}.dylib"
+        for line in output("otool", "-L", library).splitlines()[1:]:
+            dependency = line.strip().split(" (", 1)[0]
+            if "libomp" in dependency:
+                run("install_name_tool", "-change", dependency, "@loader_path/libomp.dylib", library)
+        run("codesign", "-f", "-s", "-", library)
+    run("codesign", "-f", "-s", "-", RUNTIME / "libomp.dylib")
+# Run dependency tests sequentially in separate directories: they share filenames.
+if "usearch" in COMPONENTS:
+    for name in ["test_cpp", "test_c"]:
+        suffix = ".exe" if sys.platform == "win32" else ""
+        executable = BUILD / (name + suffix)
+        if not executable.exists():
+            executable = next(BUILD.rglob(name + suffix))
+        directory = OUT / f"{name}-work"
+        directory.mkdir(exist_ok=True)
+        run(executable, cwd=directory)

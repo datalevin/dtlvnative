@@ -5,7 +5,11 @@ option(DTLV_USE_USEARCH "Include the USearch C library" ON)
 option(DTLV_USE_LLAMA "Include the llama.cpp runtime" ON)
 option(DTLV_BUILD_TESTS "Build dependency tests" ON)
 option(DTLV_BUILD_RUST_FIXTURE "Build the C/Rust storage compatibility fixture" OFF)
+option(DTLV_BUILD_RUST_RUNTIMES "Build separate USearch and llama runtime libraries" OFF)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+if(DTLV_USE_USEARCH OR DTLV_USE_LLAMA)
+    enable_language(CXX)
+endif()
 find_package(Threads REQUIRED)
 
 # Options for compilation
@@ -77,6 +81,9 @@ install(TARGETS dtlv
 )
 
 if(DTLV_USE_USEARCH)
+    # Match the current JVM backend explicitly; the retired SimSIMD flags below
+    # do not enable NumKong in the pinned USearch revision.
+    set(USEARCH_USE_NUMKONG        OFF CACHE BOOL "" FORCE)
     set(USEARCH_USE_FP16LIB        ON CACHE BOOL "" FORCE)
     set(USEARCH_USE_OPENMP         ON CACHE BOOL "" FORCE)
     set(USEARCH_USE_SIMSIMD        ON CACHE BOOL "" FORCE)
@@ -119,12 +126,30 @@ if(DTLV_USE_USEARCH)
 
     add_subdirectory(${PROJECT_SOURCE_DIR}/usearch usearch_static_c_build)
 
+    if(DTLV_BUILD_RUST_RUNTIMES)
+        set_target_properties(usearch_c PROPERTIES OUTPUT_NAME dtlvnative_usearch)
+        add_executable(rust_vector_fixture rust/tests/vector_fixture.c)
+        target_include_directories(rust_vector_fixture PRIVATE ${PROJECT_SOURCE_DIR})
+        target_link_libraries(rust_vector_fixture PRIVATE usearch_c)
+        set_target_properties(rust_vector_fixture PROPERTIES
+            RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/runtime"
+            RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}/runtime"
+            BUILD_WITH_INSTALL_RPATH ON
+            INSTALL_RPATH "$ORIGIN")
+        if(APPLE)
+            set_target_properties(rust_vector_fixture PROPERTIES INSTALL_RPATH "@loader_path")
+        endif()
+    endif()
+
     if(WIN32)
+        # Imported OpenMP targets from the subdirectory are not visible here.
+        find_package(OpenMP REQUIRED COMPONENTS CXX)
         foreach(target usearch_c usearch_static_c test_c test_cpp)
             if(TARGET ${target})
                 # USearch compares mmap return values against MAP_FAILED even on Windows.
                 # Provide the POSIX sentinel without modifying the submodule sources.
                 target_compile_definitions(${target} PRIVATE "MAP_FAILED=((void*)-1)")
+                target_link_libraries(${target} PRIVATE OpenMP::OpenMP_CXX)
             endif()
         endforeach()
     endif()
@@ -196,4 +221,29 @@ if(DTLV_USE_LLAMA)
         ${PROJECT_SOURCE_DIR}/llama.cpp/tools/mtmd
     )
     target_link_libraries(dtlv PUBLIC mtmd vendor-hash llama ggml ggml-base ggml-cpu)
+
+    if(DTLV_BUILD_RUST_RUNTIMES)
+        add_library(dtlvnative_llama SHARED dtlv_llama.c)
+        target_include_directories(dtlvnative_llama PRIVATE
+            ${PROJECT_SOURCE_DIR}/llama.cpp/include
+            ${PROJECT_SOURCE_DIR}/llama.cpp/ggml/include
+            ${PROJECT_SOURCE_DIR}/llama.cpp/tools/mtmd)
+        target_link_libraries(dtlvnative_llama PRIVATE mtmd vendor-hash llama ggml ggml-base ggml-cpu Threads::Threads)
+        set_target_properties(dtlvnative_llama PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS ON LINKER_LANGUAGE CXX)
+    endif()
+endif()
+
+if(DTLV_BUILD_RUST_RUNTIMES)
+    foreach(runtime usearch_c dtlvnative_llama)
+        if(TARGET ${runtime})
+            set_target_properties(${runtime} PROPERTIES
+                LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/runtime"
+                LIBRARY_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}/runtime"
+                RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/runtime"
+                RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}/runtime"
+                BUILD_RPATH_USE_ORIGIN ON
+                BUILD_WITH_INSTALL_RPATH ON
+                INSTALL_RPATH "$ORIGIN")
+        endif()
+    endforeach()
 endif()

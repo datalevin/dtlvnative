@@ -1,0 +1,71 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [ "$#" -lt 2 ] || [ "$#" -gt 3 ]; then
+  echo "Usage: script/publish-rust STAGING_DIRECTORY RELEASE_TAG [--publish]" >&2
+  exit 1
+fi
+STAGE=$(CDPATH= cd -- "$1" && pwd)
+RELEASE_TAG=$2
+MODE=${3:---dry-run}
+if [ "$MODE" != --publish ] && [ "$MODE" != --dry-run ]; then
+  echo "Expected --publish or --dry-run" >&2
+  exit 1
+fi
+
+# A local one-platform stage must never accidentally become a public release.
+python3 - "$STAGE" "$RELEASE_TAG" <<'PY'
+import json
+import sys
+from pathlib import Path
+stage = Path(sys.argv[1])
+manifest = json.loads((stage / "crates/dtlvnative-sys/native-artifacts.json").read_text())
+expected = {"aarch64-apple-darwin", "x86_64-unknown-linux-gnu", "aarch64-unknown-linux-gnu", "x86_64-pc-windows-msvc"}
+assert set(manifest["artifacts"]) == expected, "All four validated targets are required"
+assert all(set(components) == {"dlmdb", "usearch", "llama"} for components in manifest["artifacts"].values()), "All three native components are required"
+assert manifest["release_tag"] == sys.argv[2], "Release tag mismatch"
+PY
+
+unset DTLVNATIVE_ARTIFACT_MANIFEST
+export DTLVNATIVE_NATIVE_DIR="$STAGE/native"
+export DTLVNATIVE_OFFLINE=1
+cargo package --manifest-path "$STAGE/crates/Cargo.toml" --workspace --all-features --allow-dirty
+
+if [ "$MODE" == --dry-run ]; then
+  echo "Verified source packages. No assets uploaded or crates published."
+  exit 0
+fi
+: "${CARGO_REGISTRY_TOKEN:?Set CARGO_REGISTRY_TOKEN for crates.io publication}"
+
+# Retry after a partial upload only when the existing bytes match exactly.
+# Never overwrite an asset whose checksum may already be in a published crate.
+python3 - "$STAGE/native" "$RELEASE_TAG" <<'PY'
+import hashlib
+import json
+from pathlib import Path
+import subprocess
+import sys
+import tempfile
+
+directory, tag = Path(sys.argv[1]), sys.argv[2]
+repo = ["--repo", "datalevin/dtlvnative"]
+release = json.loads(subprocess.check_output(["gh", "release", "view", tag, *repo, "--json", "assets"]))
+existing = {asset["name"] for asset in release["assets"]}
+for path in sorted(directory.iterdir()):
+    if path.name in existing:
+        with tempfile.TemporaryDirectory() as destination:
+            subprocess.run(["gh", "release", "download", tag, *repo, "--pattern", path.name, "--dir", destination], check=True)
+            remote = Path(destination) / path.name
+            if hashlib.sha256(remote.read_bytes()).digest() != hashlib.sha256(path.read_bytes()).digest():
+                raise RuntimeError(f"Refusing to replace different release asset: {path.name}")
+    else:
+        subprocess.run(["gh", "release", "upload", tag, *repo, str(path)], check=True)
+PY
+
+# Exercise the public download path before publishing either source crate.
+unset DTLVNATIVE_NATIVE_DIR DTLVNATIVE_OFFLINE
+export CARGO_TARGET_DIR="$STAGE/download-check"
+cargo test --manifest-path "$STAGE/crates/Cargo.toml" --workspace --all-features
+
+# Cargo orders workspace publication by dependencies (dtlvnative-sys first).
+cargo publish --manifest-path "$STAGE/crates/Cargo.toml" --workspace --all-features --allow-dirty

@@ -1,17 +1,24 @@
 [workspace]
-members = ["dtlvnative-sys", "dtlvnative"]
+members = ["dtlvnative-sys", "dtlvnative", "native-builder"]
+default-members = ["dtlvnative-sys", "dtlvnative"]
 resolver = "3"
 
 [workspace.package]
 version = "0.1.0"
 edition = "2024"
 license = "EPL-2.0"
-publish = false
+repository = "https://github.com/datalevin/dtlvnative"
 
 [workspace.dependencies]
 bindgen = "=0.72.1"
 cc = "1.2"
 tempfile = "3"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+flate2 = "1"
+tar = "0.4"
+libloading = "0.8"
 
 [workspace.lints.rust]
 unsafe_op_in_unsafe_fn = "deny"

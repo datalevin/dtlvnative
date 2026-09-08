@@ -1,0 +1,53 @@
+#!/usr/bin/env python3
+"""Validate pinned embedding and text models; vision/OCR validation is excluded."""
+import argparse
+import hashlib
+import json
+import os
+from pathlib import Path
+import shutil
+import subprocess
+import sys
+
+ROOT = Path(__file__).resolve().parent.parent
+
+
+def digest(path):
+    checksum = hashlib.sha256()
+    with path.open("rb") as file:
+        for chunk in iter(lambda: file.read(1024 * 1024), b""):
+            checksum.update(chunk)
+    return checksum.hexdigest()
+
+
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument("--download", action="store_true", help="Download missing pinned test models")
+args = parser.parse_args()
+fixtures = json.loads((ROOT / "src/rust/model-fixtures.json").read_text())
+environment = os.environ.copy()
+for name, fixture in fixtures.items():
+    variable = "DTLV_EMBEDDING_MODEL_PATH" if name == "embedding" else "DTLV_TEXT_MODEL_PATH"
+    path = Path(environment.get(variable, ROOT / fixture["path"]))
+    if not path.is_file():
+        if not args.download or variable in environment:
+            raise RuntimeError(f"Missing model {path}; supply {variable} or run with --download")
+        path.parent.mkdir(parents=True, exist_ok=True)
+        partial = path.with_suffix(".part")
+        subprocess.run(["curl", "--fail", "--location", "--retry", "3", "--proto", "=https", "--proto-redir", "=https", "--output", str(partial), fixture["url"]], check=True)
+        if digest(partial) != fixture["sha256"]:
+            raise RuntimeError(f"Model checksum mismatch: {partial}")
+        partial.replace(path)
+    if variable not in environment:
+        if digest(path) != fixture["sha256"]:
+            raise RuntimeError(f"Model checksum mismatch: {path}")
+    environment[variable] = str(path.resolve())
+    print(f"Using {name} model: {path}", flush=True)
+environment["DTLVNATIVE_ARTIFACT_MANIFEST"] = str(ROOT / "target/rust-native/native-artifacts.json")
+environment["DTLVNATIVE_NATIVE_DIR"] = str(ROOT / "target/rust-native")
+environment["DTLVNATIVE_OFFLINE"] = "1"
+if sys.platform == "win32":
+    compiler = shutil.which("cl.exe")
+    if not compiler:
+        raise RuntimeError("Run in the Visual Studio x64 developer environment")
+    environment["CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_LINKER"] = str(Path(compiler).parent / "link.exe")
+subprocess.run(["cargo", "test", "--manifest-path", str(ROOT / "src/rust/Cargo.toml"), "--locked", "-p", "dtlvnative", "--no-default-features", "--features", "llama", "--test", "llama", "model_", "--", "--ignored", "--test-threads=1"], env=environment, check=True)

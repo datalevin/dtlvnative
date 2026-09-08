@@ -7,7 +7,7 @@ pub fn native_source_dir(manifest: &Path) -> &Path {
     manifest
         .parent()
         .and_then(Path::parent)
-        .expect("dtlvnative-sys must be located under src/rust")
+        .expect("native-builder must be located under src/rust")
 }
 
 /// Convert MSVC preprocessor arguments while preserving separate operands and

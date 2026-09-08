@@ -1,149 +1,157 @@
-use std::{env, fs, path::Path, path::PathBuf, process::Command};
+use std::{env, fs, path::PathBuf, process::Command};
 
-mod build_support;
+mod artifact;
 
-fn revision(source: &Path) -> String {
-    // A revision can change without changing the compiled files. Watch the
-    // submodule's real git directory as well as the source inputs below.
-    for name in ["HEAD", "refs", "packed-refs"] {
-        if let Some(output) = Command::new("git")
-            .arg("-C")
-            .arg(source)
-            .args(["rev-parse", "--git-path", name])
-            .output()
-            .ok()
-            .filter(|output| output.status.success())
-        {
-            let path = PathBuf::from(String::from_utf8_lossy(&output.stdout).trim());
-            let path = if path.is_absolute() {
-                path
-            } else {
-                source.join(path)
-            };
-            if path.exists() {
-                println!("cargo:rerun-if-changed={}", path.display());
-            }
-        }
+fn run() -> artifact::Result<()> {
+    println!("cargo:rerun-if-changed=build.rs");
+    println!("cargo:rerun-if-changed=artifact.rs");
+    for name in [
+        "DTLVNATIVE_ARTIFACT_MANIFEST",
+        "DTLVNATIVE_NATIVE_DIR",
+        "DTLVNATIVE_OFFLINE",
+        "DOCS_RS",
+    ] {
+        println!("cargo:rerun-if-env-changed={name}");
     }
-    Command::new("git")
-        .args(["-C"])
-        .arg(source)
-        .args(["rev-parse", "HEAD"])
-        .output()
-        .ok()
-        .filter(|output| output.status.success())
-        .map(|output| String::from_utf8_lossy(&output.stdout).trim().to_owned())
-        .unwrap_or_else(|| "unavailable (source archive)".to_owned())
+    let out = PathBuf::from(env::var_os("OUT_DIR").unwrap());
+    let target = env::var("TARGET")?;
+    let components: Vec<_> = ["dlmdb", "usearch", "llama"]
+        .into_iter()
+        .filter(|component| {
+            env::var_os(format!("CARGO_FEATURE_{}", component.to_ascii_uppercase())).is_some()
+        })
+        .collect();
+    if components.is_empty() {
+        fs::write(
+            out.join("build-info.txt"),
+            format!("target={target}\ndlmdb=false\n"),
+        )?;
+        return Ok(());
+    }
+    if target == "x86_64-pc-windows-msvc"
+        && env::var("CARGO_CFG_TARGET_FEATURE")
+            .unwrap_or_default()
+            .split(',')
+            .any(|f| f == "crt-static")
+    {
+        return Err(
+            "Windows native artifacts use the dynamic MSVC runtime; crt-static is unsupported"
+                .into(),
+        );
+    }
+    let crate_dir = PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").unwrap());
+    let manifest_path = env::var_os("DTLVNATIVE_ARTIFACT_MANIFEST")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| crate_dir.join("native-artifacts.json"));
+    println!("cargo:rerun-if-changed={}", manifest_path.display());
+    let manifest = artifact::Manifest::read(&manifest_path, &env::var("CARGO_PKG_VERSION")?)?;
+    let mut build_info = String::new();
+    let native_dir = out.join("native");
+    println!(
+        "cargo:rustc-env=DTLVNATIVE_RUNTIME_DIR={}",
+        native_dir.display()
+    );
+    for component in components {
+        let selected = manifest.artifact(&target, component)?;
+        let bindings = manifest_path
+            .parent()
+            .unwrap()
+            .join("bindings")
+            .join(format!("{target}-{component}.rs"));
+        println!("cargo:rerun-if-changed={}", bindings.display());
+        let bindings = fs::read(&bindings)?;
+        artifact::verify(&bindings, &selected.bindings_sha256)?;
+        fs::write(out.join(format!("bindings-{component}.rs")), bindings)?;
+        if component != "dlmdb" {
+            println!(
+                "cargo:rustc-env=DTLVNATIVE_{}_LIBRARY={}",
+                component.to_ascii_uppercase(),
+                artifact::runtime_name(&target, component)
+            );
+        }
+        // rustdoc does not link executables. docs.rs builds with networking disabled.
+        if env::var_os("DOCS_RS").is_some() {
+            build_info.push_str(&format!(
+                "target={target}\ncomponent={component}\nmode=documentation\n"
+            ));
+            continue;
+        }
+
+        let archive_name = manifest.archive_name(&target, component);
+        let local = env::var_os("DTLVNATIVE_NATIVE_DIR").map(PathBuf::from);
+        let archive_path = local.as_ref().unwrap_or(&out).join(&archive_name);
+        if local.is_some() {
+            println!("cargo:rerun-if-changed={}", archive_path.display());
+        }
+        if !archive_path.is_file() {
+            if local.is_some() || env::var_os("DTLVNATIVE_OFFLINE").is_some() {
+                return Err(format!("Missing {}. Supply the release archive using DTLVNATIVE_NATIVE_DIR, or allow its initial download.", archive_path.display()).into());
+            }
+            let partial = out.join(format!("{archive_name}.part"));
+            let url = manifest.url(&target, component);
+            println!("cargo:warning=Downloading native artifact {url}");
+            let status = Command::new("curl")
+                .args([
+                    "--fail",
+                    "--location",
+                    "--silent",
+                    "--show-error",
+                    "--proto",
+                    "=https",
+                    "--proto-redir",
+                    "=https",
+                    "--connect-timeout",
+                    "30",
+                    "--max-time",
+                    "180",
+                    "--output",
+                ])
+                .arg(&partial)
+                .arg(&url)
+                .status()
+                .map_err(|e| {
+                    format!(
+                        "Could not run curl: {e}. Install curl or supply DTLVNATIVE_NATIVE_DIR."
+                    )
+                })?;
+            if !status.success() {
+                return Err(format!("Could not download {url}: {status}").into());
+            }
+            artifact::verify(&fs::read(&partial)?, &selected.archive_sha256)?;
+            fs::rename(partial, &archive_path)?;
+        }
+        artifact::extract(
+            &fs::read(&archive_path)?,
+            &selected.archive_sha256,
+            &target,
+            component,
+            &native_dir,
+        )?;
+        let info = fs::read_to_string(native_dir.join("build-info.txt"))?;
+        build_info.push_str(&format!(
+            "component={component}\n{info}artifact_version={}\nartifact_sha256={}\n",
+            manifest.version, selected.archive_sha256
+        ));
+        if component != "dlmdb" {
+            continue;
+        }
+        println!("cargo:rustc-link-search=native={}", native_dir.display());
+        println!("cargo:rustc-link-lib=static=dtlvnative_storage");
+        println!(
+            "cargo:rustc-link-lib={}",
+            if target == "x86_64-pc-windows-msvc" {
+                "Advapi32"
+            } else {
+                "pthread"
+            }
+        );
+    }
+    fs::write(out.join("build-info.txt"), build_info)?;
+    Ok(())
 }
 
 fn main() {
-    let manifest = PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").unwrap());
-    let source = build_support::native_source_dir(&manifest);
-    let out = PathBuf::from(env::var_os("OUT_DIR").unwrap());
-    let target = env::var("TARGET").unwrap();
-    println!("cargo:rerun-if-changed=wrapper.h");
-    println!("cargo:rerun-if-changed=build.rs");
-    println!("cargo:rerun-if-changed=build_support.rs");
-    println!("cargo:rerun-if-env-changed=LIBCLANG_PATH");
-
-    let enabled = env::var_os("CARGO_FEATURE_DLMDB").is_some();
-    let mut info = format!(
-        "target={target}\ndlmdb={enabled}\ndlmdb_revision={}\nsource={}\n",
-        revision(&source.join("lmdb")),
-        source.display()
-    );
-    if !enabled {
-        fs::write(out.join("build-info.txt"), info).unwrap();
-        return;
+    if let Err(error) = run() {
+        panic!("dtlvnative native artifact: {error}");
     }
-
-    let files = [
-        "dtlv.c",
-        "dtlv_storage.h",
-        "dtlv_common.h",
-        "lmdb/libraries/liblmdb/mdb.c",
-        "lmdb/libraries/liblmdb/midl.c",
-        "lmdb/libraries/liblmdb/dlmdb.h",
-        "lmdb/libraries/liblmdb/midl.h",
-    ];
-    for file in files {
-        let path = source.join(file);
-        assert!(
-            path.is_file(),
-            "Missing {}; initialize the native submodules",
-            path.display()
-        );
-        println!("cargo:rerun-if-changed={}", path.display());
-        // A reproducible content fingerprint also records local edits to a
-        // submodule or source archive. This is provenance, not a security hash.
-        let fingerprint = fs::read(&path)
-            .unwrap()
-            .iter()
-            .fold(0xcbf29ce484222325_u64, |hash, byte| {
-                (hash ^ u64::from(*byte)).wrapping_mul(0x100000001b3)
-            });
-        info.push_str(&format!("fnv1a64:{file}={fingerprint:016x}\n"));
-    }
-
-    let windows = env::var("CARGO_CFG_TARGET_OS").unwrap() == "windows";
-    let mut native = cc::Build::new();
-    native
-        .include(source)
-        .include(source.join("lmdb/libraries/liblmdb"))
-        .file(source.join("dtlv.c"))
-        .file(source.join("lmdb/libraries/liblmdb/mdb.c"))
-        .file(source.join("lmdb/libraries/liblmdb/midl.c"))
-        .opt_level(2)
-        .pic(true);
-    if windows {
-        native.include(source.join("win32"));
-        println!("cargo:rerun-if-changed={}", source.join("win32").display());
-        println!("cargo:rustc-link-lib=Advapi32");
-    } else {
-        native.flag("-pthread");
-        println!("cargo:rustc-link-lib=pthread");
-    }
-
-    let compiler = native.get_compiler();
-    info.push_str(&format!(
-        "compiler={}\ncompiler_args={:?}\n",
-        compiler.path().display(),
-        compiler.args()
-    ));
-    info.push_str(if windows {
-        "runtime=Advapi32\n"
-    } else {
-        "runtime=pthread\n"
-    });
-    info.push_str("storage_patches=none\nusearch=false\nllama=false\n");
-    fs::write(out.join("build-info.txt"), info).unwrap();
-
-    let mut bindings = bindgen::Builder::default()
-        .header("wrapper.h")
-        .clang_arg(format!("--target={target}"))
-        .clang_arg(format!("-I{}", source.display()))
-        .allowlist_function("(mdb|dtlv)_.*")
-        .allowlist_type("(MDB|mdb|dtlv)_.*")
-        .allowlist_var("(MDB|DTLV)_.*")
-        .prepend_enum_name(false)
-        .generate_comments(false)
-        .rust_edition(bindgen::RustEdition::Edition2024)
-        .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()));
-    // Reuse cc's target, SDK, include and preprocessor settings. In particular,
-    // CFLAGS definitions must affect both the C compilation and generated ABI.
-    if compiler.is_like_msvc() {
-        bindings = bindings.clang_args(build_support::msvc_clang_args(compiler.args()));
-    } else {
-        bindings = bindings.clang_args(compiler.args().iter().map(|arg| arg.to_string_lossy()));
-    }
-    if windows {
-        bindings = bindings.clang_arg(format!("-I{}", source.join("win32").display()));
-    }
-    bindings
-        .generate()
-        .expect("Could not generate DLMDB bindings; see the Clang diagnostics above")
-        .write_to_file(out.join("bindings.rs"))
-        .unwrap();
-    native.compile("dtlvnative_storage");
-    println!("cargo:include={}", source.display());
 }

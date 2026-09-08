@@ -172,6 +172,13 @@ int dtlv_llama_embedder_create(dtlv_llama_embedder **embedder,
   ctx_params.n_ctx = (uint32_t)i->n_ctx;
   ctx_params.n_batch = (uint32_t)i->n_batch;
   ctx_params.n_ubatch = (uint32_t)i->n_batch;
+  /* Batch embeddings assign one sequence per text. Share the token budget
+     across sequences, as the upstream embedding example does. */
+  ctx_params.n_seq_max = (uint32_t)(i->n_batch < i->n_ctx ? i->n_batch : i->n_ctx);
+  if (ctx_params.n_seq_max > (uint32_t)llama_max_parallel_sequences()) {
+    ctx_params.n_seq_max = (uint32_t)llama_max_parallel_sequences();
+  }
+  ctx_params.kv_unified = true;
   ctx_params.embeddings = true;
   ctx_params.attention_type = LLAMA_ATTENTION_TYPE_NON_CAUSAL;
   ctx_params.flash_attn_type = LLAMA_FLASH_ATTN_TYPE_DISABLED;
@@ -385,6 +392,7 @@ int dtlv_llama_embed_batch(dtlv_llama_embedder *embedder,
   const float *embedding;
 
   if (!embedder || !texts || n_texts <= 0 || !output) return EINVAL;
+  if (n_texts > llama_max_parallel_sequences()) return EMSGSIZE;
   if (output_len < (size_t)n_texts * (size_t)embedder->n_embd) return EMSGSIZE;
 
   n_tokens_limit = embedder->n_batch < embedder->n_ctx
@@ -401,23 +409,29 @@ int dtlv_llama_embed_batch(dtlv_llama_embedder *embedder,
   total_tokens = 0;
   max_full = 0;
   for (i = 0; i < n_texts; i++) {
-    size_t tlen = strlen(texts[i]);
+    size_t tlen;
+    if (!texts[i]) {
+      free(text_n_tokens); free(text_n_full);
+      return EINVAL;
+    }
+    tlen = strlen(texts[i]);
     if (tlen > (size_t)INT32_MAX) {
       free(text_n_tokens); free(text_n_full);
       return EOVERFLOW;
     }
 
-    text_n_full[i] = -llama_tokenize(embedder->vocab,
+    rc = llama_tokenize(embedder->vocab,
                                       texts[i],
                                       (int32_t)tlen,
                                       NULL,
                                       0,
                                       true,
                                       true);
-    if (text_n_full[i] == INT32_MIN) {
+    if (rc == INT32_MIN) {
       free(text_n_tokens); free(text_n_full);
       return EOVERFLOW;
     }
+    text_n_full[i] = -rc;
     if (text_n_full[i] <= 0) {
       free(text_n_tokens); free(text_n_full);
       return EINVAL;
@@ -427,6 +441,10 @@ int dtlv_llama_embed_batch(dtlv_llama_embedder *embedder,
     text_n_tokens[i] = text_n_full[i] > n_tokens_limit
                        ? n_tokens_limit : text_n_full[i];
     if (text_n_full[i] > max_full) max_full = text_n_full[i];
+    if (text_n_tokens[i] > n_tokens_limit - total_tokens) {
+      free(text_n_tokens); free(text_n_full);
+      return EMSGSIZE;
+    }
     total_tokens += text_n_tokens[i];
   }
 
