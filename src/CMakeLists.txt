@@ -10,6 +10,16 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 if(DTLV_USE_USEARCH OR DTLV_USE_LLAMA)
     enable_language(CXX)
 endif()
+if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+    # USearch uses omp simd, which plain /openmp does not support. Select the
+    # SIMD-capable mode before either dependency discovers OpenMP, retaining
+    # the Microsoft runtime (vcomp140.dll) shipped with our Windows artifacts.
+    # Explicit flags also work before CMake 3.30's OpenMP_RUNTIME_MSVC option
+    # and replace cached /openmp flags when reconfiguring an existing build.
+    foreach(lang C CXX)
+        set(OpenMP_${lang}_FLAGS "-openmp:experimental" CACHE STRING "MSVC OpenMP flags" FORCE)
+    endforeach()
+endif()
 find_package(Threads REQUIRED)
 
 # Options for compilation
@@ -128,6 +138,10 @@ if(DTLV_USE_USEARCH)
 
     if(DTLV_BUILD_RUST_RUNTIMES)
         set_target_properties(usearch_c PROPERTIES OUTPUT_NAME dtlvnative_usearch)
+        if(WIN32)
+            # USearch forces a lib prefix, but the Rust loader expects this DLL name.
+            set_target_properties(usearch_c PROPERTIES PREFIX "")
+        endif()
         add_executable(rust_vector_fixture rust/tests/vector_fixture.c)
         target_include_directories(rust_vector_fixture PRIVATE ${PROJECT_SOURCE_DIR})
         target_link_libraries(rust_vector_fixture PRIVATE usearch_c)

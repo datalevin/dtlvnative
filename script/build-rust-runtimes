@@ -106,7 +106,7 @@ else:
 run(*args)
 # Record the actual CMake compiler paths and selected build options per component.
 cache = (BUILD / "CMakeCache.txt").read_text()
-options = ("CMAKE_C_COMPILER:", "CMAKE_CXX_COMPILER:", "CMAKE_BUILD_TYPE:", "CMAKE_OSX_DEPLOYMENT_TARGET:", "CMAKE_GENERATOR:", "USEARCH_", "GGML_")
+options = ("CMAKE_C_COMPILER:", "CMAKE_CXX_COMPILER:", "CMAKE_BUILD_TYPE:", "CMAKE_OSX_DEPLOYMENT_TARGET:", "CMAKE_GENERATOR:", "USEARCH_", "GGML_", "OpenMP_")
 configuration = "\n".join(line for line in cache.splitlines() if line.startswith(options) and not line.endswith("-NOTFOUND"))
 for component in COMPONENTS:
     with (OUT / f"{component}-provenance.txt").open("a") as info:
