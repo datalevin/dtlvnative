@@ -15,11 +15,14 @@ def apply_native_patch(directory, patch):
     environment.pop("GIT_DIR", None)
     environment.pop("GIT_WORK_TREE", None)
     options = {"cwd": directory, "env": environment}
+    # Snapshot bytes already have their intended line endings. Inheriting the
+    # runner's autocrlf/eol settings can rewrite LF files to CRLF during apply.
+    command = ["git", "-c", "core.autocrlf=false", "-c", "core.eol=lf", "apply"]
     reverse = subprocess.run(
-        ["git", "apply", "--reverse", "--check", str(patch)],
+        [*command, "--reverse", "--check", str(patch)],
         capture_output=True, **options,
     )
     if reverse.returncode == 0:
         return
-    subprocess.run(["git", "apply", "--check", str(patch)], check=True, **options)
-    subprocess.run(["git", "apply", str(patch)], check=True, **options)
+    subprocess.run([*command, "--check", str(patch)], check=True, **options)
+    subprocess.run([*command, str(patch)], check=True, **options)

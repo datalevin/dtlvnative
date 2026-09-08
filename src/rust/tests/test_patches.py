@@ -1,10 +1,12 @@
 """Check native patches as checked out on Unix and Windows, without a C++ build."""
-from pathlib import Path
+from itertools import product
 import os
+from pathlib import Path
 import runpy
 import subprocess
 import tempfile
 import unittest
+from unittest.mock import patch as patch_environment
 
 ROOT = Path(__file__).resolve().parents[3]
 APPLY = runpy.run_path(str(ROOT / "script/native_patch.py"))["apply_native_patch"]
@@ -15,10 +17,10 @@ PATCHES = {
 
 
 class PatchTests(unittest.TestCase):
-    def git(self, directory, *args):
+    def git(self, directory, *args, **options):
         result = subprocess.run(
-            ["git", "-c", "core.autocrlf=false", "-C", str(directory), *map(str, args)],
-            capture_output=True,
+            ["git", "-c", "core.autocrlf=false", "-c", "core.eol=lf", "-C", str(directory), *map(str, args)],
+            capture_output=True, **options,
         )
         self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
         return result.stdout
@@ -41,8 +43,21 @@ class PatchTests(unittest.TestCase):
             # Use committed submodule inputs, regardless of existing local patches.
             originals = {path: self.git(ROOT / "src" / component, "show", f"HEAD:{path}") for path in paths}
             applied_lf = None
-            for ending in [b"\n", b"\r\n"]:
-                with self.subTest(patch=name, ending=ending), tempfile.TemporaryDirectory(prefix="dtlv patch apply ") as directory:
+            configurations = [("false", "lf"), ("true", "crlf"), ("input", "crlf"), ("false", "crlf")]
+            for ending, (autocrlf, eol) in product([b"\n", b"\r\n"], configurations):
+                # Emulate runner/user settings without modifying real Git config.
+                configuration = {
+                    "GIT_CONFIG_COUNT": "2",
+                    "GIT_CONFIG_KEY_0": "core.autocrlf",
+                    "GIT_CONFIG_VALUE_0": autocrlf,
+                    "GIT_CONFIG_KEY_1": "core.eol",
+                    "GIT_CONFIG_VALUE_1": eol,
+                }
+                with (
+                    self.subTest(patch=name, ending=ending, autocrlf=autocrlf, eol=eol),
+                    patch_environment.dict(os.environ, configuration),
+                    tempfile.TemporaryDirectory(prefix="dtlv patch apply ") as directory,
+                ):
                     directory = Path(directory)
                     self.git(directory, "init", "--quiet")
                     private = directory / "private source"
@@ -56,6 +71,10 @@ class PatchTests(unittest.TestCase):
                     applied = {path: (private / path).read_bytes().replace(b"\r\n", b"\n") for path in paths}
                     for path in paths:
                         self.assertTrue(applied[path] != originals[path], f"Patch skipped {path}")
+                        self.assertTrue(
+                            (private / path).read_bytes() == applied[path].replace(b"\n", ending),
+                            f"Patch changed line endings: {path}",
+                        )
                     if applied_lf is None:
                         applied_lf = applied
                     else:
@@ -65,8 +84,7 @@ class PatchTests(unittest.TestCase):
                     for path in paths:
                         self.assertTrue((private / path).read_bytes() == applied[path].replace(b"\n", ending), path)
                     environment = dict(os.environ, GIT_CEILING_DIRECTORIES=str(directory.resolve()))
-                    result = subprocess.run(["git", "apply", "--reverse", str(patch)], cwd=private, env=environment, capture_output=True)
-                    self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+                    self.git(private, "apply", "--reverse", patch, env=environment)
                     for path, data in originals.items():
                         self.assertEqual((private / path).read_bytes(), data.replace(b"\n", ending))
 

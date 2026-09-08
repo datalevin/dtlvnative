@@ -15,6 +15,8 @@
 ### Fixed
 - fix the USearch patch's CRLF syntax on Windows and ensure Rust native
   snapshots apply patches instead of silently skipping paths in the parent repo
+- preserve native snapshot line endings when runner Git settings enable
+  automatic CRLF conversion
 - allow native batch embeddings to use multiple sequences within the context
   token budget; reject sequence limits and token-count overflow before decoding
 
