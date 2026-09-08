@@ -13,6 +13,8 @@
 - distribute separate USearch and llama shared runtimes with OpenMP, license
   notices, source provenance, and checksum pins for all four CI platforms
 ### Fixed
+- update DLMDB to `6ef7eaea0f` to fix packed duplicate-page reads behind the
+  Linux ARM64 Rust storage crash and unaligned duplicate-database metadata reads
 - use USearch's std::thread backend on MSVC to avoid unsupported OpenMP
   reductions and loop forms; keep llama on standard MSVC OpenMP
 - match the USearch DLL filename expected by Rust runtime packaging and loading
