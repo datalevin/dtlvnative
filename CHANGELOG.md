@@ -13,8 +13,10 @@
 - distribute separate USearch and llama shared runtimes with OpenMP, license
   notices, source provenance, and checksum pins for all four CI platforms
 ### Fixed
-- enable MSVC OpenMP SIMD support and match the USearch DLL filename expected
-  by Rust runtime packaging and loading on Windows
+- use USearch's std::thread backend on MSVC to avoid unsupported OpenMP
+  reductions and loop forms; keep llama on standard MSVC OpenMP
+- match the USearch DLL filename expected by Rust runtime packaging and loading
+  on Windows
 - fix the USearch patch's CRLF syntax on Windows and ensure Rust native
   snapshots apply patches instead of silently skipping paths in the parent repo
 - preserve native snapshot line endings when runner Git settings enable

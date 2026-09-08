@@ -181,6 +181,12 @@ match the existing JVM backend, disable host-native CPU tuning, and select the
 platform OpenMP runtime. Model builds use CPU only, including mtmd for vision.
 The C wrapper enables multiple embedding sequences within a shared token budget.
 
+On MSVC, USearch disables OpenMP and uses its `std::thread` executor for parallel
+operations. Its OpenMP reductions and loop forms exceed MSVC's support, including
+`/openmp:experimental`. Metric loops use ordinary compiler optimization on Windows.
+llama continues to use `/openmp` and the bundled `vcomp140.dll`; the Windows
+USearch archive also retains that DLL to keep the runtime package layout uniform.
+
 `sys::BUILD_INFO` records artifact version/SHA-256, native revisions, source
 fingerprints, patches, and compiler configuration. Release assembly compares
 source provenance across platforms while allowing different compilers/SDKs.

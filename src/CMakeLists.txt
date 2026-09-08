@@ -11,13 +11,12 @@ if(DTLV_USE_USEARCH OR DTLV_USE_LLAMA)
     enable_language(CXX)
 endif()
 if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-    # USearch uses omp simd, which plain /openmp does not support. Select the
-    # SIMD-capable mode before either dependency discovers OpenMP, retaining
-    # the Microsoft runtime (vcomp140.dll) shipped with our Windows artifacts.
-    # Explicit flags also work before CMake 3.30's OpenMP_RUNTIME_MSVC option
-    # and replace cached /openmp flags when reconfiguring an existing build.
+    # llama uses OpenMP 2.0 with the bundled Microsoft runtime (vcomp140.dll).
+    # Replace experimental flags cached by earlier builds. USearch uses its
+    # std::thread backend on MSVC, since even /openmp:experimental cannot
+    # compile its declare reduction directives and unsigned loop forms.
     foreach(lang C CXX)
-        set(OpenMP_${lang}_FLAGS "-openmp:experimental" CACHE STRING "MSVC OpenMP flags" FORCE)
+        set(OpenMP_${lang}_FLAGS "-openmp" CACHE STRING "MSVC OpenMP flags" FORCE)
     endforeach()
 endif()
 find_package(Threads REQUIRED)
@@ -95,7 +94,12 @@ if(DTLV_USE_USEARCH)
     # do not enable NumKong in the pinned USearch revision.
     set(USEARCH_USE_NUMKONG        OFF CACHE BOOL "" FORCE)
     set(USEARCH_USE_FP16LIB        ON CACHE BOOL "" FORCE)
-    set(USEARCH_USE_OPENMP         ON CACHE BOOL "" FORCE)
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+        set(USEARCH_USE_OPENMP OFF CACHE BOOL "Use OpenMP for a thread pool" FORCE)
+        message(STATUS "USearch: using std::thread instead of unsupported MSVC OpenMP constructs")
+    else()
+        set(USEARCH_USE_OPENMP ON CACHE BOOL "Use OpenMP for a thread pool" FORCE)
+    endif()
     set(USEARCH_USE_SIMSIMD        ON CACHE BOOL "" FORCE)
     set(USEARCH_BUILD_STATIC_C     ON CACHE BOOL "" FORCE)
     set(USEARCH_BUILD_SHARED_C     OFF CACHE BOOL "" FORCE)
@@ -157,13 +161,18 @@ if(DTLV_USE_USEARCH)
 
     if(WIN32)
         # Imported OpenMP targets from the subdirectory are not visible here.
-        find_package(OpenMP REQUIRED COMPONENTS CXX)
+        if(USEARCH_USE_OPENMP)
+            find_package(OpenMP REQUIRED COMPONENTS CXX)
+        endif()
         foreach(target usearch_c usearch_static_c test_c test_cpp)
             if(TARGET ${target})
                 # USearch compares mmap return values against MAP_FAILED even on Windows.
                 # Provide the POSIX sentinel without modifying the submodule sources.
                 target_compile_definitions(${target} PRIVATE "MAP_FAILED=((void*)-1)")
-                target_link_libraries(${target} PRIVATE OpenMP::OpenMP_CXX)
+                target_link_libraries(${target} PRIVATE Threads::Threads)
+                if(USEARCH_USE_OPENMP)
+                    target_link_libraries(${target} PRIVATE OpenMP::OpenMP_CXX)
+                endif()
             endif()
         endforeach()
     endif()
