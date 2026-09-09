@@ -1,26 +1,17 @@
 # Change Log
 
-## Unreleased
+## 1.1.0
 ### Added
-- prepare `dtlvnative` and `dtlvnative-sys` source crate releases with
-  per-platform prebuilt DLMDB storage archives, generated bindings, and pinned
-  SHA-256 checksums; keep Rust validation and publishing in `build.yml`
-- verify isolated source packages without native compiler or libclang access
-- add Rust USearch indexing, filtered search, metric/scalar adapters, exact
-  search, serialization, and borrowed index views
-- add Rust embedding, tokenization, generation, summarization, and vision/OCR
-  wrappers; validate pinned embedding/text models and skip vision/OCR model tests
-- distribute separate USearch and llama shared runtimes with OpenMP, license
-  notices, source provenance, and checksum pins for all four CI platforms
+- prepare `dtlvnative` and `dtlvnative-sys` rust source crate releases
+
 ### Fixed
-- update DLMDB to `6ef7eaea0f` to fix packed duplicate-page reads behind the
-  Linux ARM64 Rust storage crash and unaligned duplicate-database metadata reads
+- update DLMDB to fix leaf2 reads
 - use USearch's std::thread backend on MSVC to avoid unsupported OpenMP
   reductions and loop forms; keep llama on standard MSVC OpenMP
 - match the USearch DLL filename expected by Rust runtime packaging and loading
   on Windows
 - fix the USearch patch's CRLF syntax on Windows and ensure Rust native
-  snapshots apply patches instead of silently skipping paths in the parent repo
+  snapshots apply patches
 - preserve native snapshot line endings when runner Git settings enable
   automatic CRLF conversion
 - allow native batch embeddings to use multiple sequences within the context
