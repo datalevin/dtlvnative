@@ -1,11 +1,11 @@
 # dtlvnative
 
-Provides pre-built native dependencies for
-[Datalevin](https://github.com/juji-io/datalevin) database. This is done by
-packaging the compiled native libraries and JavaCPP JNI library files in the
-platform specific JAR files.
+Provides Rust interfaces and prebuilt native dependencies for the
+[Datalevin](https://github.com/juji-io/datalevin) database. Rust applications use
+source crates backed by native release binaries. JVM applications use platform
+JARs containing the compiled native libraries and JavaCPP JNI bindings.
 
-In addition to JavaCPP's JNI library, these native libraries are included:
+The native dependencies are:
 
 * [`dlmdb`](https://github.com/huahaiy/dlmdb) a fork of
   [LMDB](https://www.symas.com/mdb) key value storage library.
@@ -16,7 +16,55 @@ In addition to JavaCPP's JNI library, these native libraries are included:
 * `dtlv` wraps DLMDB. It implements Datalevin iterators, counters and
   samplers.
 
-The following platforms are currently supported:
+## Rust crates
+
+* [`dtlvnative`](https://crates.io/crates/dtlvnative) provides Rust APIs for
+  storage, vector search, and model operations, with managed native handles.
+* [`dtlvnative-sys`](https://crates.io/crates/dtlvnative-sys) provides the raw
+  native bindings and is included automatically by `dtlvnative`.
+
+Add this to your `Cargo.toml` to enable all three native dependencies:
+
+```toml
+[dependencies]
+dtlvnative = { version = "1.1.1", features = ["usearch", "llama"] }
+```
+
+| Feature | Interface |
+|---|---|
+| `dlmdb` (default) | Environments, databases, transactions, and cursors for Datalevin's DLMDB fork |
+| `usearch` | Vector indexing, filtered and exact search, serialization, and borrowed index views |
+| `llama` | CPU embeddings, tokenization, text generation, summarization, and vision/OCR |
+| `full` | All three interfaces |
+
+For storage alone, use `dtlvnative = "1.1.1"`. Each feature also works with
+`default-features = false`, allowing vector or model operations without storage.
+
+Rust native binaries are available for these targets:
+
+| Platform | Rust target |
+|---|---|
+| macOS ARM64 | `aarch64-apple-darwin` |
+| Linux x86-64 (glibc) | `x86_64-unknown-linux-gnu` |
+| Linux ARM64 (glibc) | `aarch64-unknown-linux-gnu` |
+| Windows x86-64 (MSVC) | `x86_64-pc-windows-msvc` |
+
+The crates ship Rust source and generated bindings. CI builds the native
+dependencies separately and attaches them to
+[GitHub releases](https://github.com/datalevin/dtlvnative/releases).
+`dtlvnative-sys` downloads the archives for the enabled features and verifies
+their SHA-256 checksums. Consumers need Rust, its platform linker, and `curl`
+for the initial download; native C/C++ compilation and libclang are unnecessary.
+
+DLMDB links statically. USearch and llama use shared libraries; when deploying
+an application, copy those libraries and their bundled OpenMP runtime together
+and set `DTLVNATIVE_RUNTIME_DIR` to that directory. System runtime requirements,
+offline builds, and examples are covered in the
+[Rust guide](src/rust/README.md).
+
+## JVM packages
+
+The following platforms are supported by the JVM packages:
 
 * macosx-arm64
 * freebsd-x86_64
@@ -229,7 +277,7 @@ the longest edge to around 512 pixels first.
 
 ## Additional dependencies
 
-Right now, the included shared libraries depend on some system libraries.
+The shared libraries in the JVM packages depend on some system libraries.
 
 * `libc`
 * `libmvec`

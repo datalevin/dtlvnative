@@ -33,7 +33,5 @@ and SHA-256 values. All raw calls remain unsafe and retain the C ownership,
 buffer, and threading contracts. Do not link another LMDB or the aggregate JVM
 library alongside these components.
 
-The private repository builder generates release archives and bindings.
-`DTLVNATIVE_ARTIFACT_MANIFEST` selects a local manifest and adjacent `bindings/`
-for development, explicitly replacing the published checksum pins. See the
-repository's `src/rust/README.md` for build, test, and release instructions.
+See the [Rust guide](https://github.com/datalevin/dtlvnative/blob/master/src/rust/README.md)
+for installation, supported platforms, offline builds, and deployment.
