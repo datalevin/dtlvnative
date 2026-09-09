@@ -1,5 +1,11 @@
 # Change Log
 
+## WIP
+### Added
+- prepare `dtlvnative` and `dtlvnative-sys` 1.1.1 Rust source crate releases
+### Fixed
+- enable Rust publication and JVM deployment on published GitHub releases
+
 ## 1.1.0
 ### Added
 - prepare `dtlvnative` and `dtlvnative-sys` rust source crate releases

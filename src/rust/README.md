@@ -9,7 +9,7 @@ tracked separately in [rust.md](../../rust.md).
 
 ```toml
 [dependencies]
-dtlvnative = { version = "0.1.0", features = ["usearch", "llama"] }
+dtlvnative = { version = "1.1.1", features = ["usearch", "llama"] }
 ```
 
 The first crates.io publication is pending the release workflow.

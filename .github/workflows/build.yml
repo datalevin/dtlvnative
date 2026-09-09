@@ -2,10 +2,10 @@ name: Build
 
 on:
   push:
-  # pull_request:
+  pull_request:
   release:
     types:
-      - created
+      - published
   workflow_dispatch:
 
 jobs:
@@ -126,118 +126,118 @@ jobs:
           if-no-files-found: error
 
       # macOS ARM64 build
-      # - name: Build macOS ARM64
-      #   if: matrix.platform == 'macosx-arm64'
-      #   run: |
-      #     mkdir -p src/java/datalevin/dtlvnative/macosx-arm64
-      #     mkdir -p macosx-arm64/resources/datalevin/dtlvnative/macosx-arm64
+      - name: Build macOS ARM64
+        if: matrix.platform == 'macosx-arm64'
+        run: |
+          mkdir -p src/java/datalevin/dtlvnative/macosx-arm64
+          mkdir -p macosx-arm64/resources/datalevin/dtlvnative/macosx-arm64
 
-      #     script/build-macos
-      #     cp src/*.dylib macosx-arm64/resources/datalevin/dtlvnative/macosx-arm64/
+          script/build-macos
+          cp src/*.dylib macosx-arm64/resources/datalevin/dtlvnative/macosx-arm64/
 
-      #     cd macosx-arm64
-      #     lein deps
+          cd macosx-arm64
+          lein deps
 
-      #     cd ../src/java
-      #     java -jar ~/.m2/repository/org/bytedeco/javacpp/1.5.13/javacpp-1.5.13.jar datalevin/dtlvnative/DTLV.java
+          cd ../src/java
+          java -jar ~/.m2/repository/org/bytedeco/javacpp/1.5.13/javacpp-1.5.13.jar datalevin/dtlvnative/DTLV.java
 
-      #     # Fix libjniDTLV.dylib to use @loader_path for libdtlv.dylib reference
-      #     cd datalevin/dtlvnative/macosx-arm64
-      #     install_name_tool -change libdtlv.dylib @loader_path/libdtlv.dylib libjniDTLV.dylib
-      #     codesign -f -s - libjniDTLV.dylib
+          # Fix libjniDTLV.dylib to use @loader_path for libdtlv.dylib reference
+          cd datalevin/dtlvnative/macosx-arm64
+          install_name_tool -change libdtlv.dylib @loader_path/libdtlv.dylib libjniDTLV.dylib
+          codesign -f -s - libjniDTLV.dylib
 
-      #     cd ../../../../..
-      #     cp src/java/datalevin/dtlvnative/macosx-arm64/*.dylib macosx-arm64/resources/datalevin/dtlvnative/macosx-arm64/
+          cd ../../../../..
+          cp src/java/datalevin/dtlvnative/macosx-arm64/*.dylib macosx-arm64/resources/datalevin/dtlvnative/macosx-arm64/
 
-      #     cd macosx-arm64
-      #     lein run
-      #     if [ "${{ github.event_name }}" = "release" ]; then
-      #       lein deploy clojars
-      #     fi
+          cd macosx-arm64
+          lein run
+          if [ "${{ github.event_name }}" = "release" ]; then
+            lein deploy clojars
+          fi
 
       # Linux x86_64 build
-      # - name: Build Linux x86_64
-      #   if: matrix.platform == 'linux-x86_64'
-      #   run: |
-      #     export CC=/usr/bin/gcc-12
-      #     export CXX=/usr/bin/g++-12
+      - name: Build Linux x86_64
+        if: matrix.platform == 'linux-x86_64'
+        run: |
+          export CC=/usr/bin/gcc-12
+          export CXX=/usr/bin/g++-12
 
-      #     sudo apt-get update
-      #     sudo apt-get install -y gcc-12 g++-12
+          sudo apt-get update
+          sudo apt-get install -y gcc-12 g++-12
 
-      #     mkdir -p linux-x86_64/resources/datalevin/dtlvnative/linux-x86_64
-      #     mkdir -p src/java/datalevin/dtlvnative/linux-x86_64
+          mkdir -p linux-x86_64/resources/datalevin/dtlvnative/linux-x86_64
+          mkdir -p src/java/datalevin/dtlvnative/linux-x86_64
 
-      #     script/build
-      #     cp src/*.so linux-x86_64/resources/datalevin/dtlvnative/linux-x86_64
+          script/build
+          cp src/*.so linux-x86_64/resources/datalevin/dtlvnative/linux-x86_64
 
-      #     cd linux-x86_64
-      #     lein deps
+          cd linux-x86_64
+          lein deps
 
-      #     cd ../src/java
-      #     java -jar ~/.m2/repository/org/bytedeco/javacpp/1.5.13/javacpp-1.5.13.jar datalevin/dtlvnative/DTLV.java
+          cd ../src/java
+          java -jar ~/.m2/repository/org/bytedeco/javacpp/1.5.13/javacpp-1.5.13.jar datalevin/dtlvnative/DTLV.java
 
-      #     cd ../..
-      #     cp src/java/datalevin/dtlvnative/linux-x86_64/*.so linux-x86_64/resources/datalevin/dtlvnative/linux-x86_64/
+          cd ../..
+          cp src/java/datalevin/dtlvnative/linux-x86_64/*.so linux-x86_64/resources/datalevin/dtlvnative/linux-x86_64/
 
-      #     cd linux-x86_64
-      #     lein run
-      #     if [ "${{ github.event_name }}" = "release" ]; then
-      #       lein deploy clojars
-      #     fi
+          cd linux-x86_64
+          lein run
+          if [ "${{ github.event_name }}" = "release" ]; then
+            lein deploy clojars
+          fi
 
       # Linux ARM64 build
-      # - name: Build Linux ARM64
-      #   if: matrix.platform == 'linux-arm64'
-      #   run: |
-      #     export CC=/usr/bin/gcc-12
-      #     export CXX=/usr/bin/g++-12
+      - name: Build Linux ARM64
+        if: matrix.platform == 'linux-arm64'
+        run: |
+          export CC=/usr/bin/gcc-12
+          export CXX=/usr/bin/g++-12
 
-      #     sudo apt-get update
-      #     sudo apt-get install -y gcc-12 g++-12 cmake
+          sudo apt-get update
+          sudo apt-get install -y gcc-12 g++-12 cmake
 
-      #     mkdir -p src/java/datalevin/dtlvnative/linux-arm64
-      #     mkdir -p linux-arm64/resources/datalevin/dtlvnative/linux-arm64
+          mkdir -p src/java/datalevin/dtlvnative/linux-arm64
+          mkdir -p linux-arm64/resources/datalevin/dtlvnative/linux-arm64
 
-      #     script/build
-      #     cp src/*.so linux-arm64/resources/datalevin/dtlvnative/linux-arm64/
+          script/build
+          cp src/*.so linux-arm64/resources/datalevin/dtlvnative/linux-arm64/
 
-      #     cd linux-arm64
-      #     lein deps
+          cd linux-arm64
+          lein deps
 
-      #     cd ../src/java
-      #     java -jar ~/.m2/repository/org/bytedeco/javacpp/1.5.13/javacpp-1.5.13.jar datalevin/dtlvnative/DTLV.java
+          cd ../src/java
+          java -jar ~/.m2/repository/org/bytedeco/javacpp/1.5.13/javacpp-1.5.13.jar datalevin/dtlvnative/DTLV.java
 
-      #     cd ../..
-      #     cp src/java/datalevin/dtlvnative/linux-arm64/*.so linux-arm64/resources/datalevin/dtlvnative/linux-arm64/
+          cd ../..
+          cp src/java/datalevin/dtlvnative/linux-arm64/*.so linux-arm64/resources/datalevin/dtlvnative/linux-arm64/
 
-      #     cd linux-arm64
-      #     lein run
-      #     if [ "${{ github.event_name }}" = "release" ]; then
-      #       lein deploy clojars
-      #     fi
+          cd linux-arm64
+          lein run
+          if [ "${{ github.event_name }}" = "release" ]; then
+            lein deploy clojars
+          fi
 
       # Windows x86_64 build
-      # - name: Build Windows x86_64
-      #   if: matrix.platform == 'windows-x86_64'
-      #   shell: cmd
-      #   run: |
-      #     mkdir windows-x86_64\resources\datalevin\dtlvnative\windows-x86_64
+      - name: Build Windows x86_64
+        if: matrix.platform == 'windows-x86_64'
+        shell: cmd
+        run: |
+          mkdir windows-x86_64\resources\datalevin\dtlvnative\windows-x86_64
 
-      #     cd windows-x86_64
-      #     if not exist project.clj exit /b 1
-      #     call ..\lein.bat deps
-      #     if errorlevel 1 exit /b %errorlevel%
+          cd windows-x86_64
+          if not exist project.clj exit /b 1
+          call ..\lein.bat deps
+          if errorlevel 1 exit /b %errorlevel%
 
-      #     cd ..
-      #     call script\build.bat
-      #     if errorlevel 1 exit /b %errorlevel%
+          cd ..
+          call script\build.bat
+          if errorlevel 1 exit /b %errorlevel%
 
-      #     cd windows-x86_64
-      #     if not exist project.clj exit /b 1
-      #     call ..\lein.bat run
-      #     if errorlevel 1 exit /b %errorlevel%
-      #     if "%GITHUB_EVENT_NAME%"=="release" call ..\lein.bat deploy clojars
+          cd windows-x86_64
+          if not exist project.clj exit /b 1
+          call ..\lein.bat run
+          if errorlevel 1 exit /b %errorlevel%
+          if "%GITHUB_EVENT_NAME%"=="release" call ..\lein.bat deploy clojars
 
   # Publication runs once, after every platform in the existing matrix passes.
   publish-rust:
@@ -264,5 +264,5 @@ jobs:
         run: |
           python3 script/prepare-rust-release target/rust-release-inputs/rust-native-* \
             --release-tag "$RELEASE_TAG" --output target/rust-release
-      # - name: Verify packages and publish Rust release
-      #   run: script/publish-rust target/rust-release "$RELEASE_TAG" --publish
+      - name: Verify packages and publish Rust release
+        run: script/publish-rust target/rust-release "$RELEASE_TAG" --publish
