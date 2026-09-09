@@ -1,6 +1,6 @@
 # Change Log
 
-## WIP
+## 1.1.1
 ### Added
 - prepare `dtlvnative` and `dtlvnative-sys` 1.1.1 Rust source crate releases
 ### Fixed
