@@ -27,7 +27,7 @@ Add this to your `Cargo.toml` to enable all three native dependencies:
 
 ```toml
 [dependencies]
-dtlvnative = { version = "1.1.1", features = ["usearch", "llama"] }
+dtlvnative = { version = "1.1.2", features = ["usearch", "llama"] }
 ```
 
 | Feature | Interface |
@@ -37,7 +37,7 @@ dtlvnative = { version = "1.1.1", features = ["usearch", "llama"] }
 | `llama` | CPU embeddings, tokenization, text generation, summarization, and vision/OCR |
 | `full` | All three interfaces |
 
-For storage alone, use `dtlvnative = "1.1.1"`. Each feature also works with
+For storage alone, use `dtlvnative = "1.1.2"`. Each feature also works with
 `default-features = false`, allowing vector or model operations without storage.
 
 Rust native binaries are available for these targets:

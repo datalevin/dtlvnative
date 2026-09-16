@@ -1,5 +1,8 @@
 # Change Log
 
+## WIP
+### Improved
+- make JVM and rust version consistent
 
 ## 1.1.2
 ### Fixed
