@@ -1,5 +1,12 @@
 # Change Log
 
+
+## WIP
+### Fixed
+- update DLMDB to fix compressed overflow page deletion
+### Improved
+- update deps
+
 ## 1.1.1
 ### Added
 - prepare `dtlvnative` and `dtlvnative-sys` 1.1.1 Rust source crate releases
