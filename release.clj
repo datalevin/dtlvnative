@@ -1,14 +1,11 @@
 #!/usr/bin/env clojure
 
-"USAGE: ./release.clj"
+"USAGE: ./release.clj <new-version>"
 
-;; Single source of truth for the release version. Bump this before running.
-(def version "1.1.2")
+(def new-v (first *command-line-args*))
 
-(assert (re-matches #"\d+\.\d+\.\d+" version)
-        "release.clj must define a semantic version")
-
-(println "Releasing version" version)
+(assert (re-matches #"\d+\.\d+\.\d+" (or new-v "")) "Use ./release.clj <new-version>")
+(println "Releasing version" new-v)
 
 (require '[clojure.string :as str])
 (require '[clojure.java.shell :as sh])
@@ -25,7 +22,7 @@
   (fn [content] (str/replace content pattern replacement)))
 
 (defn set-version [pattern]
-  (replace-version pattern (str "$1" version)))
+  (replace-version pattern (str "$1" new-v)))
 
 (def rust-crates ["dtlvnative" "dtlvnative-sys" "dtlvnative-build"])
 
@@ -38,7 +35,7 @@
         (fn [text crate]
           (str/replace text
             (re-pattern (str "(name = \"" crate "\"\\nversion = \")[^\"]+(\")"))
-            (str "$1" version "$2")))
+            (str "$1" new-v "$2")))
         content
         rust-crates))))
 
@@ -59,7 +56,7 @@
 
 (defn update-version []
   (println "\n\n[ Updating version number ]\n")
-  (update-file "CHANGELOG.md" #(str/replace % "# WIP" (str "# " version)))
+  (update-file "CHANGELOG.md" #(str/replace % "# WIP" (str "# " new-v)))
 
   ;; JVM platform packages.
   (update-file "windows-x86_64/project.clj"
@@ -103,8 +100,8 @@
       "src/rust/dtlvnative-sys/native-artifacts.json"
       )
 
-  (sh "git" "commit" "-m" (str "Version " version))
-  (sh "git" "tag" "--no-sign" version)
+  (sh "git" "commit" "-m" (str "Version " new-v))
+  (sh "git" "tag" "--no-sign" new-v)
   (sh "git" "push" "origin" "master"))
 
 (defn- str->json [s]
@@ -125,13 +122,13 @@
 (defn github-release []
   (let [changelog (->> (slurp "CHANGELOG.md")
                        str/split-lines
-                       (drop-while #(not= (str "# " version) %))
+                       (drop-while #(not= (str "# " new-v) %))
                        next
                        (take-while #(not (re-matches #"# .+" %)))
                        (remove str/blank?)
                        (str/join "\n"))
-        request   {"tag_name"         version
-                   "name"             version
+        request   {"tag_name"         new-v
+                   "name"             new-v
                    "target_commitish" "master"
                    "body"             changelog}]
     (sh "curl" "-u" GITHUB_AUTH
