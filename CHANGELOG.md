@@ -1,7 +1,7 @@
 # Change Log
 
 
-## WIP
+## 1.1.2
 ### Fixed
 - update DLMDB to fix compressed overflow page deletion
 ### Improved
