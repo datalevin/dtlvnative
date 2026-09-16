@@ -11,7 +11,7 @@ Rust interfaces to Datalevin's native dependencies:
 
 ```toml
 [dependencies]
-dtlvnative = { version = "1.1.2", features = ["usearch", "llama"] }
+dtlvnative = { version = "1.1.3", features = ["usearch", "llama"] }
 ```
 
 Each feature also works independently with `default-features = false`.
