@@ -128,7 +128,7 @@ dependencies = [
 
 [[package]]
 name = "dtlvnative"
-version = "1.1.4"
+version = "1.1.5"
 dependencies = [
  "dtlvnative-sys",
  "tempfile",
@@ -136,7 +136,7 @@ dependencies = [
 
 [[package]]
 name = "dtlvnative-build"
-version = "1.1.4"
+version = "1.1.5"
 dependencies = [
  "bindgen",
  "cc",
@@ -150,7 +150,7 @@ dependencies = [
 
 [[package]]
 name = "dtlvnative-sys"
-version = "1.1.4"
+version = "1.1.5"
 dependencies = [
  "flate2",
  "libloading",

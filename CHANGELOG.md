@@ -1,5 +1,10 @@
 # Change Log
 
+## 1.1.5
+### Improved
+- update DLMDB to speedup reads by reduce reader table scans
+- update DLMDB to reuse cursor node search
+
 ## 1.1.4
 ### Improved
 - update DLMDB to speedup writes by using generation tag for prefix cache
