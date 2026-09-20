@@ -1,5 +1,9 @@
 # Change Log
 
+## 1.1.4
+### Improved
+- update DLMDB to speedup writes by using generation tag for prefix cache
+
 ## 1.1.3
 ### Improved
 - make JVM and rust version consistent
