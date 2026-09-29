@@ -1,6 +1,6 @@
 # Change Log
 
-## WIP
+## 1.1.6
 ### Fixed
 - update DLMDB to fix more compressed deletion rebalance bugs
 
