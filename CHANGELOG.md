@@ -1,5 +1,9 @@
 # Change Log
 
+## WIP
+### Fixed
+- update DLMDB to fix more compressed deletion rebalance bugs
+
 ## 1.1.5
 ### Improved
 - update DLMDB to speedup reads by reduce reader table scans
