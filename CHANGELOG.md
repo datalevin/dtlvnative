@@ -1,6 +1,6 @@
 # Change Log
 
-## WIP
+## 1.1.7
 ### Fixed
 - update DLMDB to fix memory leaks
 ### Improved
