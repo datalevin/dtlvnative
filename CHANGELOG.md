@@ -1,5 +1,9 @@
 # Change Log
 
+## 1.1.8
+### Fixed
+- fix usearch patch
+
 ## 1.1.7
 ### Fixed
 - update DLMDB to fix memory leaks
