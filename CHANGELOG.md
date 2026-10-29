@@ -1,6 +1,6 @@
 # Change Log
 
-## WIP
+## 1.2.0
 ### Added
 - dlmdb native prepared-copy API.
 ### Improved
