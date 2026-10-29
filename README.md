@@ -77,6 +77,33 @@ The name of the released JAR is `org.clojars.huahaiy/dtlvnative-PLATFORM`, where
 
 Vector support using usearch on Windows is experimental.
 
+## macOS CI runner
+
+The Build workflow uses a local ARM64 Mac for releases and manual runs, with
+the labels `self-hosted`, `macOS`, `ARM64`, and `dtlvnative-build`. Pull requests
+use GitHub's `macos-14` runner. For a manual run without the local Mac, select
+`github-hosted` in the `macos_runner` input.
+
+Register a runner for `datalevin/dtlvnative` from
+[Settings → Actions → Runners](https://github.com/datalevin/dtlvnative/settings/actions/runners),
+using a separate installation directory such as
+`~/actions-runner/dtlvnative`. The existing Datalevin runner is registered to
+`datalevin/datalevin` and cannot pick up this repository's jobs. Follow GitHub's
+download instructions for macOS ARM64, then configure and start the service:
+
+```sh
+./config.sh --url https://github.com/datalevin/dtlvnative \
+  --token TOKEN_FROM_GITHUB --name dtlvnative-macos-arm64 \
+  --labels dtlvnative-build --work _work
+./svc.sh install
+./svc.sh start
+```
+
+The runner account needs Xcode Command Line Tools, Homebrew in `/opt/homebrew`,
+and `rustup` in `~/.cargo/bin`. The workflow installs missing Homebrew build
+dependencies and sets up Java and Rust. It targets macOS 14 even when the local
+Mac runs a newer OS. Keep the Mac awake while jobs run.
+
 ## Prepared LMDB copies (unreleased)
 
 The C API exposes a single-use copy snapshot, also available through JavaCPP's
