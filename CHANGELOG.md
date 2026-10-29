@@ -1,5 +1,11 @@
 # Change Log
 
+## WIP
+### Added
+- dlmdb native prepared-copy API.
+### Improved
+- update deps
+
 ## 1.1.8
 ### Fixed
 - fix usearch patch

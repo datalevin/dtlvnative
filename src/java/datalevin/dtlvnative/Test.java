@@ -216,6 +216,11 @@ public class Test {
         System.err.println("Testing LMDB ...");
 
         runTest("basic LMDB operations", Test::testLMDBBasic);
+        runTest("prepared LMDB copies", () -> {
+            try { PreparedCopyTest.main(new String[0]); }
+            catch (Exception e) { throw new RuntimeException(e); }
+            pass("Passed prepared LMDB copy tests.");
+        });
         runTest("counted/prefix LMDB", Test::testLMDBCountedPrefix);
         runTest("rank-based list sample iterator", Test::testRankSampleIterator);
         runTest("key rank sample iterator", Test::testKeyRankSampleIterator);

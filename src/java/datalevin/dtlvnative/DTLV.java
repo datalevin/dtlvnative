@@ -278,6 +278,13 @@ public class DTLV extends datalevin.dtlvnative.DTLVConfig {
         }
     }
 
+    /** A single-use prepared snapshot; release with mdb_env_copy_close. */
+    @Opaque
+    public static class MDB_copy extends Pointer {
+        public MDB_copy() { super((Pointer) null); }
+        public MDB_copy(Pointer p) { super(p); }
+    }
+
     /**
      * \brief Opaque structure for a transaction handle.
      *
@@ -1116,6 +1123,21 @@ public class DTLV extends datalevin.dtlvnative.DTLVConfig {
             @Cast("unsigned int") int flags);
 
     public static native int mdb_env_copy2(MDB_env env, String path, @Cast("unsigned int") int flags);
+
+    /** Captures the copy reader and metadata before releasing the writer mutex.
+     * The environment must remain open and mapped until the handle is closed.
+     * Use on its preparing thread unless MDB_NOTLS is set. Execute once, and
+     * close on success, failure, or cancellation. No payload is written here.
+     */
+    public static native int mdb_env_copy_prepare(MDB_env env, String path,
+            @Cast("unsigned int") int flags, @ByPtrPtr MDB_copy copy);
+
+    /** Copies from exactly the prepared snapshot, without renewing it. */
+    public static native int mdb_env_copy_execute(MDB_copy copy);
+
+    /** Releases the reader and file. The handle is invalid after this call. */
+    public static native int mdb_env_copy_close(MDB_copy copy);
+
 
     /**
      * \brief Copy an LMDB environment to the specified file descriptor,

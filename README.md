@@ -77,6 +77,60 @@ The name of the released JAR is `org.clojars.huahaiy/dtlvnative-PLATFORM`, where
 
 Vector support using usearch on Windows is experimental.
 
+## Prepared LMDB copies (unreleased)
+
+The C API exposes a single-use copy snapshot, also available through JavaCPP's
+opaque `DTLV.MDB_copy` and matching native methods:
+
+```c
+MDB_copy *copy = NULL;
+int rc = mdb_env_copy_prepare(env, destination, MDB_CP_COMPACT, &copy);
+if (!rc) {
+    /* Release application write exclusion here. Writers may now commit. */
+    rc = mdb_env_copy_execute(copy);
+    int close_rc = mdb_env_copy_close(copy);
+    if (!rc) rc = close_rc;
+}
+```
+
+Preparation captures the actual reader, both metadata pages, and matching page
+bounds before releasing the native writer mutex. It creates the destination
+exclusively and writes no database payload. Execution uses that fixed snapshot
+without renewing it, in compact and noncompact mode. The existing
+`mdb_env_copy2` and `mdb_env_copyfd2` compose the same phases.
+
+Close the handle after success, failure, or cancellation before execution; this
+releases the reader, file, and memory. Closing consumes the handle even if it
+reports a file-close error. In Java, call `mdb_env_copy_close` explicitly and
+clear the opaque pointer afterwards; `Pointer.close()` alone does not release
+these native resources. Failed preparation returns a null handle and releases
+all resources, although an incomplete destination file may remain.
+
+The environment must remain open and its mapping must not be resized/remapped
+until the handle closes. Prepare, execute, and close use the same thread unless
+`MDB_NOTLS` is set; a handle is always used serially. The preparing thread must
+not hold a write transaction. With `MDB_NOLOCK`, callers must exclude writers
+during preparation. Destination sync and publication remain the caller's
+responsibility, as with the existing copy API.
+
+DLMDB development belongs in the sibling `../dlmdb` project. Keep `src/lmdb`
+unchanged during development and update its revision through the normal native
+dependency workflow after the DLMDB changes are committed.
+
+`make -C ../dlmdb/libraries/liblmdb test` covers fixed snapshots, foreground writer
+progress, empty/read-only/in-memory/write-map sources, descriptor ownership,
+cancellation, and allocation failures. After updating the DLMDB dependency,
+`script/build` and `script/build-macos` include the prepared-copy regression
+alongside the USearch C/C++ build gates. The JVM storage suite runs
+`PreparedCopyTest` on each platform;
+it can also run independently with
+`lein run -m datalevin.dtlvnative.PreparedCopyTest` from a platform directory
+after its native and JNI resources have been rebuilt and staged.
+
+This API requires rebuilt native and JNI libraries. Complete the platform build
+and release gates before updating downstream dependencies; existing published
+platform jars do not provide these entry points.
+
 ## llama.cpp text + embedding
 
 `dtlvnative` packages the CPU backend of `llama.cpp` with OpenMP enabled. The

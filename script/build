@@ -90,6 +90,10 @@ cd ..
 make clean
 make
 
+# Verify prepared LMDB snapshots and writer progress for both copy modes.
+make --directory=lmdb/libraries/liblmdb mtest_copy
+lmdb/libraries/liblmdb/mtest_copy
+
 # Bundle libgomp/libomp so users do not need system packages
 GCC_BIN="${CC:-gcc}"
 LIBGOMP_SO="$($GCC_BIN -print-file-name=libgomp.so.1)"
