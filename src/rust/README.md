@@ -11,13 +11,13 @@ Add the following to your `Cargo.toml` to enable storage, vectors, and models:
 
 ```toml
 [dependencies]
-dtlvnative = { version = "1.2.0", features = ["usearch", "llama"] }
+dtlvnative = { version = "1.2.1", features = ["usearch", "llama"] }
 ```
 
-For storage alone, use `dtlvnative = "1.2.0"`.
+For storage alone, use `dtlvnative = "1.2.1"`.
 
 The crates use prebuilt native libraries downloaded from
-[GitHub releases](https://github.com/datalevin/dtlvnative/releases/tag/1.2.0).
+[GitHub releases](https://github.com/datalevin/dtlvnative/releases/tag/1.2.1).
 Only the libraries for your enabled features are downloaded, and their SHA-256
 checksums are verified. You need Rust, its platform linker, and `curl` for the
 initial HTTPS download. Native C/C++ compilation, CMake, and libclang are
@@ -37,7 +37,7 @@ to use vector search without storage:
 
 ```toml
 [dependencies]
-dtlvnative = { version = "1.2.0", default-features = false, features = ["usearch"] }
+dtlvnative = { version = "1.2.1", default-features = false, features = ["usearch"] }
 ```
 
 Disabling all features avoids native downloads and linkage.

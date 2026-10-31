@@ -1,6 +1,6 @@
 # Change Log
 
-## WIP
+## 1.2.1
 ### Added
 - Projected EAV cursor API, including a reusable selective-materialization
   scanner backed by the DLMDB duplicate-prefix projector.
