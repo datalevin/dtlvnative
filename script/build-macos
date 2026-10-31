@@ -121,6 +121,9 @@ cd ..
 make clean
 make
 
+# Verify projected EAV reads against ordinary duplicate cursor reads.
+make test-eav-projection
+
 # Verify prepared LMDB snapshots and writer progress for both copy modes.
 make --directory=lmdb/libraries/liblmdb mtest_copy
 lmdb/libraries/liblmdb/mtest_copy

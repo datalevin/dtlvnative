@@ -47,5 +47,13 @@ $(lib_dtlv)$(SOEXT): $(lib_lmdb) $(lib_usearch) $(lib_llama) $(DTLV_OBJS)
 		$(CXX) $(LDFLAGS) -pthread -shared -fPIC -o $@ $(DTLV_OBJS) -L. -ldlmdb $(OMP_LIB) $(USEARCH_LIB) $(LLAMA_LIB)
 
 clean:
-		$(RM) *.o *.a *.so *.dylib
+		$(RM) *.o *.a *.so *.dylib eav_projection_test
+		$(RM) -r eav_projection_test.dSYM
 		$(MAKE) --directory=$(lib_lmdb) clean
+
+.PHONY: test-eav-projection
+test-eav-projection: dtlv.o $(lib_lmdb)
+	$(MAKE) --directory=$(lib_lmdb) mtest_dup_projection
+	$(lib_lmdb)/mtest_dup_projection
+	$(CC) $(CPPFLAGS) $(DTLV_CFLAGS) eav_projection_test.c dtlv.o -L. -ldlmdb -o eav_projection_test
+	./eav_projection_test

@@ -21,3 +21,6 @@ pom.xml.asc
 .settings/
 /src/rust/target/
 __pycache__/
+
+/src/eav_projection_test
+/src/eav_projection_test.dSYM/

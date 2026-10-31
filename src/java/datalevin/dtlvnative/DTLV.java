@@ -3592,6 +3592,22 @@ public class DTLV extends datalevin.dtlvnative.DTLVConfig {
     public static native void dtlv_list_key_range_full_val_iter_destroy(
             dtlv_list_key_range_full_val_iter iter);
 
+    /** Borrow projected cardinality-one EAV values until the cursor moves. */
+    public static native int dtlv_eav_project_next(
+            MDB_cursor cur, MDB_val key, MDB_val values,
+            @Const @Cast("const int32_t*") IntPointer aids, int count, int first);
+
+    public static native int dtlv_eav_projector_create(
+            @Cast("dtlv_eav_projector**") PointerPointer out,
+            MDB_cursor cur, MDB_val key, MDB_val values,
+            @Const @Cast("const int32_t*") IntPointer aids, int count);
+
+    public static native int dtlv_eav_projector_next(
+            @Cast("dtlv_eav_projector*") Pointer iter);
+
+    public static native void dtlv_eav_projector_destroy(
+            @Cast("dtlv_eav_projector*") Pointer iter);
+
     /**
      * Opaque structure for a rank based list sample iterator.
      */

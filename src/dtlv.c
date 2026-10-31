@@ -954,6 +954,129 @@ void dtlv_list_key_range_full_val_iter_destroy(
   if (iter) free(iter);
 }
 
+/* EAV duplicate values begin with a big-endian, nonnegative attribute ID. */
+static uint32_t dtlv_eav_aid(const MDB_val *value) {
+  const unsigned char *p = value->mv_data;
+  return ((uint32_t)p[0] << 24) | ((uint32_t)p[1] << 16) |
+      ((uint32_t)p[2] << 8) | (uint32_t)p[3];
+}
+
+int dtlv_eav_project_next(MDB_cursor *cur, MDB_val *key, MDB_val *values,
+                          const int32_t *aids, int count, int first) {
+  if (!cur || !key || !values || !aids || count <= 0) return EINVAL;
+  if (first) {
+    for (int i = 0; i < count; i++) {
+      if (aids[i] < 0 || (i && aids[i - 1] >= aids[i])) return EINVAL;
+    }
+  }
+
+  MDB_val value;
+  int rc = mdb_cursor_get(cur, key, &value, first ? MDB_FIRST : MDB_NEXT_NODUP);
+  if (rc != MDB_SUCCESS) return rc;
+  if (key->mv_size != 8) return MDB_BAD_VALSIZE;
+
+  const MDB_val *duplicates = NULL;
+  mdb_size_t total = 0;
+  rc = mdb_cursor_list_dup(cur, &duplicates, &total);
+  if (rc == MDB_NOTFOUND) {
+    /* LMDB stores an entity with one datom without a duplicate sub-page. */
+    duplicates = &value;
+    total = 1;
+  } else if (rc != MDB_SUCCESS) {
+    return rc;
+  }
+
+  int selected = 0;
+  for (mdb_size_t i = 0; i < total; i++) {
+    const MDB_val *v = &duplicates[i];
+    if (v->mv_size < 4) return MDB_BAD_VALSIZE;
+    uint32_t aid = dtlv_eav_aid(v);
+    if (aid < (uint32_t)aids[selected]) continue;
+    if (aid > (uint32_t)aids[selected]) return DTLV_FALSE;
+    /* Select the first value, matching the cardinality-one EAV reader. */
+    values[selected++] = *v;
+    if (selected == count) return DTLV_TRUE;
+  }
+  return DTLV_FALSE;
+}
+
+
+struct dtlv_eav_projector {
+  MDB_cursor *cur;
+  MDB_val *key;
+  MDB_val *values;
+  MDB_dup_projector *projection;
+  unsigned char *present;
+  int count;
+  int first;
+};
+
+void dtlv_eav_projector_destroy(dtlv_eav_projector *iter) {
+  if (!iter) return;
+  mdb_dup_projector_destroy(iter->projection);
+  free(iter->present);
+  free(iter);
+}
+
+int dtlv_eav_projector_create(dtlv_eav_projector **out, MDB_cursor *cur,
+                              MDB_val *key, MDB_val *values,
+                              const int32_t *aids, int count) {
+  if (!out) return EINVAL;
+  *out = NULL;
+  if (!cur || !key || !values || !aids || count <= 0) return EINVAL;
+  dtlv_eav_projector *iter = calloc(1, sizeof(*iter));
+  MDB_val *prefixes = calloc((size_t)count, sizeof(MDB_val));
+  unsigned char *bytes = malloc((size_t)count * 4);
+  if (!iter || !prefixes || !bytes) {
+    free(iter); free(prefixes); free(bytes);
+    return ENOMEM;
+  }
+  iter->cur = cur;
+  iter->key = key;
+  iter->values = values;
+  iter->count = count;
+  iter->first = 1;
+  int rc = MDB_SUCCESS;
+  for (int i = 0; i < count; i++) {
+    if (aids[i] < 0 || (i && aids[i - 1] >= aids[i])) {
+      rc = EINVAL;
+      goto done;
+    }
+    uint32_t aid = (uint32_t)aids[i];
+    unsigned char *p = bytes + (size_t)i * 4;
+    p[0] = (unsigned char)(aid >> 24); p[1] = (unsigned char)(aid >> 16);
+    p[2] = (unsigned char)(aid >> 8); p[3] = (unsigned char)aid;
+    prefixes[i].mv_data = p;
+    prefixes[i].mv_size = 4;
+  }
+  rc = mdb_dup_projector_create(&iter->projection, prefixes, (size_t)count);
+  if (rc != MDB_SUCCESS) goto done;
+  iter->present = calloc((size_t)count, 1);
+  if (!iter->present) { rc = ENOMEM; goto done; }
+  *out = iter;
+done:
+  free(prefixes);
+  free(bytes);
+  if (rc != MDB_SUCCESS) dtlv_eav_projector_destroy(iter);
+  return rc;
+}
+
+int dtlv_eav_projector_next(dtlv_eav_projector *iter) {
+  if (!iter) return EINVAL;
+  /* Position without requesting the first duplicate's decoded payload. */
+  int rc = mdb_cursor_get(iter->cur, iter->key, NULL,
+                         iter->first ? MDB_FIRST : MDB_NEXT_NODUP);
+  iter->first = 0;
+  if (rc != MDB_SUCCESS) return rc;
+  if (iter->key->mv_size != 8) return MDB_BAD_VALSIZE;
+  rc = mdb_cursor_project_dup(iter->cur, iter->projection,
+                              iter->values, iter->present);
+  if (rc != MDB_SUCCESS) return rc;
+  for (int i = 0; i < iter->count; i++)
+    if (!iter->present[i]) return DTLV_FALSE;
+  return DTLV_TRUE;
+}
+
 struct dtlv_list_rank_sample_iter {
   MDB_cursor *cur;
   MDB_txn *txn;

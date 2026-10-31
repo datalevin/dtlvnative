@@ -17,6 +17,7 @@
 
 #include "lmdb/libraries/liblmdb/dlmdb.h"
 #include "dtlv_common.h"
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -259,6 +260,31 @@ extern "C" {
    * Opaque structure for iterating a key range while visiting every value per
    * key using full duplicate spans.
    */
+  /**
+   * Advance an EAV cursor by one entity and project sorted, distinct aids.
+   * Values must point to at least count MDB_val descriptors. No Datalevin
+   * values are decoded; LMDB may materialize compressed duplicate pages in
+   * cursor-owned storage. Returned descriptors and the entity key are borrowed
+   * until this cursor moves or the transaction ends. Single-value keys and
+   * duplicate sub-databases are supported. The caller must use uncompressed
+   * EAV keys/values and establish cardinality-one semantics separately.
+   * Pass first != 0 to start at MDB_FIRST; subsequent calls use NEXT_NODUP.
+   * Return DTLV_TRUE for a complete row, DTLV_FALSE for a missing attribute,
+   * MDB_NOTFOUND at EOF, or an LMDB/errno failure. Ignore values unless true.
+   */
+  int dtlv_eav_project_next(MDB_cursor *cur, MDB_val *key, MDB_val *values,
+                            const int32_t *aids, int count, int first);
+
+  /** Invocation-local selective EAV projection; output views expire on advance.
+   * Requires a read-only cursor, raw EAV encoding and bytewise duplicate order. */
+  typedef struct dtlv_eav_projector dtlv_eav_projector;
+  int dtlv_eav_projector_create(dtlv_eav_projector **out, MDB_cursor *cur,
+                                MDB_val *key, MDB_val *values,
+                                const int32_t *aids, int count);
+  /** Return DTLV_TRUE for complete, DTLV_FALSE for incomplete, MDB_NOTFOUND at EOF. */
+  int dtlv_eav_projector_next(dtlv_eav_projector *iter);
+  void dtlv_eav_projector_destroy(dtlv_eav_projector *iter);
+
   typedef struct dtlv_list_key_range_full_val_iter
       dtlv_list_key_range_full_val_iter;
 
