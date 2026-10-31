@@ -1,5 +1,9 @@
 # Change Log
 
+## 1.2.2
+### Fixed
+- missing test file
+
 ## 1.2.1
 ### Added
 - Projected EAV cursor API, including a reusable selective-materialization
